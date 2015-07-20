@@ -23,6 +23,7 @@ namespace ProgettoClient
         public MainWindow()
         {
             InitializeComponent();
+
         }
     }
 }

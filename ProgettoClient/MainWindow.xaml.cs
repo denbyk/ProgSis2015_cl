@@ -20,10 +20,22 @@ namespace ProgettoClient
     /// </summary>
     public partial class MainWindow : Window
     {
+        DirMonitor d;
+
         public MainWindow()
         {
             InitializeComponent();
+            MyLogger.add("si comincia");
+            d = new DirMonitor("C:\\DATI\\poli\\Programmazione di Sistema\\progetto_client\\cartella_test");
+        }
 
+        private void Button_Click(object sender, RoutedEventArgs e)
+        {
+            //d.scanDir();
+            RecordFile a = new RecordFile("ciao", 1,1, DateTime.Today);
+            RecordFile b = new RecordFile("ciao", 1,1, DateTime.Today);
+            MyLogger.add(a == b);
+            MyLogger.add(a.Equals(b));
         }
     }
 }

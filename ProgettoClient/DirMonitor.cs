@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 
 namespace ProgettoClient
 {
+    enum FileStatus { New, Updated, Old, Deleted }; //rispetto alla versione precedente della cartella nota al clinet
+
     /// <summary>
     /// classe che si occupa di monitorare la cartella prescelta ad intervalli regolari
     /// </summary>
@@ -15,7 +17,9 @@ namespace ProgettoClient
         
         private doOnFile_d doOnFile;
         private System.IO.DirectoryInfo myDir;
-        
+        private DirImageManager dim;
+
+        private HashSet<RecordFile> newFiles, updatedFiles, deletedFiles;
 
         /// <summary>
         /// costruttore
@@ -26,12 +30,14 @@ namespace ProgettoClient
             myDir = new System.IO.DirectoryInfo(path);
             if (!myDir.Exists) 
                 throw new System.IO.DirectoryNotFoundException(path);
+            dim = new DirImageManager(myDir);
             doOnFile = checkFile;
         }
         
         public void scanDir()
         {
             WalkDirectoryTree(myDir, doOnFile);
+            deletedFiles = dim.getDeleted();
         }
 
 
@@ -39,6 +45,22 @@ namespace ProgettoClient
         private void checkFile(System.IO.FileInfo fi)
         {
             MyLogger.add(fi.FullName);
+            RecordFile thisFile = new RecordFile(fi);
+            FileStatus status = dim.UpdateStatus(thisFile);
+            switch (status)
+            {
+                case FileStatus.New:
+                    MyLogger.add("new: ");
+
+                    break;
+                case FileStatus.Updated:
+                    MyLogger.add("updated: ");
+                    break;
+                case FileStatus.Old:
+                    MyLogger.add("old: ");
+                    break;
+            }
+            MyLogger.add(thisFile);
         }
 
                 

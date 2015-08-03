@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Threading;
 
 namespace ProgettoClient
 {
@@ -19,25 +20,83 @@ namespace ProgettoClient
         private System.IO.DirectoryInfo myDir;
         private DirImageManager dim;
 
-        private HashSet<RecordFile> newFiles, updatedFiles, deletedFiles;
+        private HashSet<RecordFile> newFiles = new HashSet<RecordFile>();
+        private HashSet<RecordFile> updatedFiles = new HashSet<RecordFile>();
+        private HashSet<RecordFile> deletedFiles = new HashSet<RecordFile>();
 
+        private DispatcherTimer timer;
+        private TimeSpan defaultInterval = new TimeSpan(0,1,0);
+
+        /// <summary>
+        /// modificandone il valore il timer [ automaticamente resettato.
+        /// </summary>
+        public TimeSpan Interval
+        {
+            set
+            {
+                if (value.Equals(TimeSpan.Zero))
+                    value.Add(new TimeSpan(0, 1, 0));
+                timer.Stop();
+                timer.Interval = value;
+                timer.Start();
+            }
+        }
+
+        
+        
         /// <summary>
         /// costruttore
         /// </summary>
-        /// <param name="path"> path della cartella da monitorare</param>
-        public DirMonitor(string path)
+        /// <param name="path">path della cartella da monitorare</param>
+        /// <param name="interval">periodo tra una scansione e l'altra. se impostato a null viene messo a 1 minuto</param> 
+        public DirMonitor(string path, TimeSpan interval)
         {
             myDir = new System.IO.DirectoryInfo(path);
+            
             if (!myDir.Exists) 
                 throw new System.IO.DirectoryNotFoundException(path);
             dim = new DirImageManager(myDir);
             doOnFile = checkFile;
+            
+            if (interval == TimeSpan.Zero)
+                interval = new TimeSpan(0,0,1,0); //1 minuto
+            timer = new System.Windows.Threading.DispatcherTimer();
+            timer.Tick += new EventHandler(TimerHandler);
+            
+            //appena aperto faccio subito una scansione
+            scanDir();
+            //poi faccio partire il timer impostando l'intervallo
+            this.Interval = interval;
         }
-        
+
+        private void TimerHandler(object sender, EventArgs e)
+        {
+            scanDir();
+            //ricomincia
+            timer.Start();
+        }
+
+
         public void scanDir()
         {
             WalkDirectoryTree(myDir, doOnFile);
             deletedFiles = dim.getDeleted();
+            dim.storeDirImage();
+            MyLogger.add("deleted files:");
+            foreach (var item in deletedFiles)
+                MyLogger.add(item);
+            MyLogger.add("scanDir done");
+            MyLogger.line();
+        }
+
+        public void Pause()
+        {
+            timer.Stop();
+        }
+
+        public void Continue()
+        {
+            timer.Start();
         }
 
 
@@ -51,13 +110,15 @@ namespace ProgettoClient
             {
                 case FileStatus.New:
                     MyLogger.add("new: ");
-
+                    newFiles.Add(thisFile);
                     break;
                 case FileStatus.Updated:
                     MyLogger.add("updated: ");
+                    updatedFiles.Add(thisFile);
                     break;
                 case FileStatus.Old:
                     MyLogger.add("old: ");
+                    //nothing to do
                     break;
             }
             MyLogger.add(thisFile);

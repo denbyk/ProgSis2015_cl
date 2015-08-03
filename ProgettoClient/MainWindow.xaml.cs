@@ -15,7 +15,6 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using System.Collections.Generic;
 
 namespace ProgettoClient
 {
@@ -30,19 +29,21 @@ namespace ProgettoClient
         {
             InitializeComponent();
             MyLogger.add("si comincia");
-            d = new DirMonitor("C:\\DATI\\poli\\Programmazione di Sistema\\progetto_client\\cartella_test");
+            //questo andrebbe fatta da un thread diverso.
+            d = new DirMonitor("C:\\DATI\\poli\\Programmazione di Sistema\\progetto_client\\cartella_test", new TimeSpan(0,0,15));
         }
 
         private void Button_Click(object sender, RoutedEventArgs e)
         {
+            
             //d.scanDir();
             //RecordFile a = new RecordFile("ciao", 1,1, DateTime.Today);
             //RecordFile b = new RecordFile("ciao", 1,1, DateTime.Today);
             //MyLogger.add(a == b);
             //MyLogger.add(a.Equals(b));
 
-            RecordFile t = new RecordFile("ciao", 1, 2, DateTime.Today);
-            MyLogger.add(t);
+            //RecordFile t = new RecordFile("ciao", 1, 2, DateTime.Today);
+            //MyLogger.add(t);
 
            
 
@@ -55,24 +56,34 @@ namespace ProgettoClient
             //t = (RecordFile) formatter.Deserialize(s);
             //MyLogger.add(t);
 
-            var p = new RecordFile("test", 0, 0, DateTime.Now);
-            var set = new HashSet<RecordFile>();
-            set.Add(t);
-            set.Add(p);
-            MyLogger.add(set);
+            //var p = new RecordFile("test", 0, 0, DateTime.Now);
+            //var set = new HashSet<RecordFile>();
+            //set.Add(t);
+            //set.Add(p);
+            //MyLogger.add(set);
 
             //var hashset = (HashSet<string>)info.GetValue("hashset", typeof(HashSet<string>));
             //hashset.OnDeserialization(this);
 
 
             
-            set = null;
+            //set = null;
 
-            s.Close();
+            //s.Close();
 
-            s = new FileStream("test_serializzazione.bin", FileMode.Open);
-            set = (HashSet<RecordFile>)formatter.Deserialize(s);
-            MyLogger.add(s);
+            //s = new FileStream("test_serializzazione.bin", FileMode.Open);
+            //set = (HashSet<RecordFile>)formatter.Deserialize(s);
+            //MyLogger.add(s);
+
+           // d.scanDir();
+            
+
         }
     }
 }
+
+
+/*
+ * da debuggare:
+ *      rileva file updated come old.
+*/

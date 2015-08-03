@@ -7,7 +7,8 @@ using System.Diagnostics;
 
 namespace ProgettoClient
 {
-    static class MyLogger
+    static class 
+        MyLogger
     {
         public static void add(string message)
         {
@@ -18,6 +19,11 @@ namespace ProgettoClient
         public static void add(Object o)
         {
             MyLogger.add(o.ToString());
+        }
+
+        public static void line()
+        {
+            MyLogger.add("-----------------------------------------------");
         }
 
     }

@@ -52,11 +52,16 @@ namespace ProgettoClient
             if (r == null)
                 return false;            
             if (nameAndPath.Equals(r.nameAndPath) &&
-                    hash.Equals(hash) &&
-                    size.Equals(size) &&
-                    lastModified.Equals(lastModified))
+                    hash.Equals(r.hash) &&
+                    size.Equals(r.size) &&
+                    lastModified.Equals(r.lastModified))
                     return true;
             return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return base.GetHashCode();
         }
 
         /// <summary>
@@ -84,9 +89,16 @@ namespace ProgettoClient
             // Reset the property value using the GetValue method.
             this.nameAndPath = (string)info.GetValue("nameAndPath", typeof(string));
             this.hash = (int)info.GetValue("hash", typeof(int));
-            this.size = (int)info.GetValue("size", typeof(long));
+            this.size = (long)info.GetValue("size", typeof(long));
             this.lastModified = (DateTime) info.GetValue("lastModified", typeof(DateTime));
         }
+
+        //probabilmente non serve
+        //public RecordFile(string NameAndPath, Deleted notUsed){
+
+        //}
+
+    
 
         public override string ToString()
         {
@@ -94,6 +106,13 @@ namespace ProgettoClient
         }
 
     }
+
+
+    //probabilmente non serve
+    ///// <summary>
+    ///// just used to discriminate one the RecordFile constructor overloads
+    ///// </summary>
+    //static class Deleted{};
 }
 
 

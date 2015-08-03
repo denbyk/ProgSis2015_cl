@@ -32,7 +32,7 @@ namespace ProgettoClient
         {
             this.myDir = myDir;
             loadDirImage();
-
+            
         }
 
 
@@ -66,15 +66,19 @@ namespace ProgettoClient
                 deletedFileNames.Remove(rf.nameAndPath);
                 //RecordFile newRf = new RecordFile(rf);
                 if (rf.Equals(match))
-                    //i due file sono identici
+                    //i due file sono identici, non cambio nulla
                     return FileStatus.Old;
                 else
                     //è aggiornato
+                    dirImage.Remove(rf.nameAndPath);
+                    dirImage.Add(rf.nameAndPath, rf);
                     return FileStatus.Updated;
             }
             else
             {
                 //se non lo trovi è new
+                //aggiungilo a DirImage
+                dirImage.Add(rf.nameAndPath, rf);
                 return FileStatus.New;
             }
         }
@@ -82,12 +86,21 @@ namespace ProgettoClient
 
 
 
-        public HashSet<string> getDeleted() //?? posso tornare l'oggetto private??
+        public HashSet<RecordFile> getDeleted() //?? posso tornare l'oggetto private??
         {
             if (!Updating)
                 throw new InvalidOperationException("you can't request deleted records while not updating file status");
             Updating = false;
-            return deletedFileNames;
+            var res = new HashSet<RecordFile>();
+            
+            foreach (var item in deletedFileNames)
+            {
+                RecordFile temp;
+                dirImage.TryGetValue(item, out temp);
+                res.Add(temp);
+                dirImage.Remove(item);
+            }
+            return res;
         }
 
 
@@ -102,17 +115,18 @@ namespace ProgettoClient
             {
                 fin = new FileStream(IMAGE_FILE_PATH, FileMode.Open);
                 dirImage = (Dictionary<string, RecordFile>)formatter.Deserialize(fin);
+                fin.Close();
             }
             catch (Exception e)
             {
                 //in caso di file danneggiato o simili considero che precedente stato della cartella fosse tutta vuota.
                 MyLogger.add("impossibile accedere a " + IMAGE_FILE_PATH + ". " + e.Message);
                 dirImage = new Dictionary<string, RecordFile>();
-                throw;
+                //throw;
             }
         }
 
-        private void storeDirImage()
+        public void storeDirImage()
         {
             //prima scrivo quella nuova, poi elimino quella vecchia dal disco.
             //throw new NotImplementedException();

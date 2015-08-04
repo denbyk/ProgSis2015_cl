@@ -91,7 +91,7 @@ namespace ProgettoClient
 
         public void Pause()
         {
-            timer.Stop();
+            timer.Stop();                                                                      
         }
 
         public void Continue()
@@ -107,7 +107,7 @@ namespace ProgettoClient
             RecordFile thisFile = new RecordFile(fi);
             FileStatus status = dim.UpdateStatus(thisFile);
             switch (status)
-            {
+            {                                    
                 case FileStatus.New:
                     MyLogger.add("new: ");
                     newFiles.Add(thisFile);

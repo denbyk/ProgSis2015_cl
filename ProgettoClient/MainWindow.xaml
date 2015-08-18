@@ -14,7 +14,7 @@
         </RichTextBox>
         <TextBox x:Name="textboxPathSyncDir" HorizontalAlignment="Left" Height="23" Margin="10,53,0,0" TextWrapping="Wrap" Text="inserire Percorso qui" VerticalAlignment="Top" Width="314"/>
         <TextBlock HorizontalAlignment="Left" Margin="10,32,0,0" TextWrapping="Wrap" Text="Cartella Sincronizzata" VerticalAlignment="Top" Width="120"/>
-        <Button x:Name="buttStartStopSync" Content="Start" HorizontalAlignment="Left" Margin="10,118,0,0" VerticalAlignment="Top" Width="152" Height="41"/>
+        <Button x:Name="buttStartStopSync" Content="Start" HorizontalAlignment="Left" Margin="10,118,0,0" VerticalAlignment="Top" Width="152" Height="41" Click="buttStartStopSync_Click"/>
         <TextBlock HorizontalAlignment="Left" Margin="10,93,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="152" Height="20"><Run Text="Sincronizzazione Automatica"/><LineBreak/><Run/></TextBlock>
         <Button x:Name="buttStartStopSync_Copy" Content="Sincronizza Ora" HorizontalAlignment="Left" Margin="172,118,0,0" VerticalAlignment="Top" Width="152" Height="41"/>
         <TextBlock HorizontalAlignment="Left" Margin="172,93,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="152" Height="20"><Run Text="Sincronizzazione "/><Run Text="Manuale"/><LineBreak/><Run Text="+"/><LineBreak/><Run/></TextBlock>

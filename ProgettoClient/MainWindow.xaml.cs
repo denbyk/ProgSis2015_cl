@@ -27,6 +27,10 @@ namespace ProgettoClient
     /// </summary>
     public partial class MainWindow : Window
     {
+        public delegate void AddLog_dt(string log);
+        public AddLog_dt DelWriteLog;
+
+
         DirMonitor d;
         DispatcherTimer timerTest;
         Thread logicThread;
@@ -57,13 +61,17 @@ namespace ProgettoClient
         public MainWindow()
         {
             InitializeComponent();
-            MyLogger.add("si comincia");
+
+            DelWriteLog = writeInLog_RichTextBox;
+            MyLogger.init(this);
+            MyLogger.add("si comincia" + Environment.NewLine);
             
             this.SycnNowEvent = new EventWaitHandle(false, EventResetMode.ManualReset);
 
             timerTest = new System.Windows.Threading.DispatcherTimer();
             timerTest.Tick += new EventHandler(TimerHandler);
             ScanInterval = new TimeSpan(0, 0, 3);
+
 
             //sgancio thread secondario
             logicThread = new Thread(logicThreadStart);
@@ -129,7 +137,10 @@ namespace ProgettoClient
                 throw;
             }
             MyLogger.add("logicThreadStart sta per uscire");
+            //TODO ??? 
+            //il logic thread si sta chiudendo (magari perchè utente ha chiuso il programma, eventualmente chiudere connessioni varie.
         }
+
 
         private void Button_Click(object sender, RoutedEventArgs e)
         {
@@ -142,6 +153,16 @@ namespace ProgettoClient
         private void buttStartStopSync_Click(object sender, RoutedEventArgs e)
         {
 
+        }
+
+        private void writeInLog_RichTextBox(String message)
+        {
+            Log_RichTextBox.AppendText(message);
+        }
+
+        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            LogicThreadShutDown(); 
         }
     }
 }

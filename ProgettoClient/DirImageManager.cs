@@ -142,6 +142,7 @@ namespace ProgettoClient
                 MyLogger.add("impossibile scrivere immagine della directory su disco nel percorso: "
                     + IMAGE_FILE_PATH);
                 MyLogger.add(e.Message);
+                //TODO è meglio fare rethrow o fare no???
                 throw;
             }
 

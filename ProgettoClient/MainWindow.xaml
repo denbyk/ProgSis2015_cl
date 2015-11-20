@@ -6,14 +6,14 @@
     <Grid>
         <Button x:Name="buttSelSyncSir" HorizontalAlignment="Left" VerticalAlignment="Top" Width="24" Margin="329,53,0,0" Height="23" Click="Button_Click" Content="...">
         </Button>
-        <RichTextBox x:Name="Log_RichTextBox" HorizontalAlignment="Left" Height="528" Margin="392,10,0,0" VerticalAlignment="Top" Width="346">
+        <RichTextBox x:Name="Log_RichTextBox" HorizontalAlignment="Left" Height="528" Margin="392,10,0,0" VerticalAlignment="Top" Width="346" IsReadOnly="True">
             <FlowDocument>
                 <Paragraph>
                     <Run/>
                 </Paragraph>
             </FlowDocument>
         </RichTextBox>
-        <TextBox x:Name="textboxPathSyncDir" HorizontalAlignment="Left" Height="23" Margin="10,53,0,0" TextWrapping="Wrap" Text="inserire Percorso qui" VerticalAlignment="Top" Width="314"/>
+        <TextBox x:Name="textboxPathSyncDir" HorizontalAlignment="Left" Height="23" Margin="10,53,0,0" TextWrapping="Wrap" Text="inserire Percorso qui" VerticalAlignment="Top" Width="314" IsReadOnly="True"/>
         <TextBlock HorizontalAlignment="Left" Margin="10,32,0,0" TextWrapping="Wrap" Text="Cartella Sincronizzata" VerticalAlignment="Top" Width="120"/>
         <Button x:Name="buttStartStopSync" Content="Start" HorizontalAlignment="Left" Margin="10,118,0,0" VerticalAlignment="Top" Width="152" Height="41" Click="buttStartStopSync_Click"/>
         <TextBlock HorizontalAlignment="Left" Margin="10,93,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="152" Height="20"><Run Text="Sincronizzazione Automatica"/><LineBreak/><Run/></TextBlock>

@@ -17,7 +17,7 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Threading;
 using System.Windows.Threading;
-
+using Ookii.Dialogs.Wpf;
 
 
 namespace ProgettoClient
@@ -30,6 +30,9 @@ namespace ProgettoClient
         public delegate void AddLog_dt(string log);
         public AddLog_dt DelWriteLog;
 
+        private const string SETTINGS_FILE_PATH = "Settings.bin";
+        //TODO change this
+        private const string DEFAULT_FOLDERROOT_PATH = "C:\\DATI\\poli\\Programmazione di Sistema\\progetto_client\\cartella_test";
 
         DirMonitor d;
         DispatcherTimer timerTest;
@@ -41,6 +44,20 @@ namespace ProgettoClient
 
         bool TerminateLogicThread = false;
 
+        private Settings settings;
+        //private string _rootFolder;
+        private string RootFolder
+        {
+            get { return settings.RootFolder;}//_rootFolder; }
+            set
+            {
+                this.textboxPathSyncDir.Text = value;
+                settings.RootFolder = value;//_rootFolder = value;
+            }
+        }
+
+        //private string RootFolder = "C:\\DATI\\poli\\Programmazione di Sistema\\progetto_client\\cartella_test";
+        
 
         /// <summary>
         /// modificandone il valore il timer è automaticamente resettato.
@@ -60,11 +77,17 @@ namespace ProgettoClient
 
         public MainWindow()
         {
+            //init UI
             InitializeComponent();
-
+            
+            //init delegates
             DelWriteLog = writeInLog_RichTextBox;
+
+            //init accessory classes
             MyLogger.init(this);
-            MyLogger.add("si comincia" + Environment.NewLine);
+
+            //load last settings from file
+            LoadSettings();
             
             this.SycnNowEvent = new EventWaitHandle(false, EventResetMode.ManualReset);
 
@@ -72,10 +95,46 @@ namespace ProgettoClient
             timerTest.Tick += new EventHandler(TimerHandler);
             ScanInterval = new TimeSpan(0, 0, 3);
 
+            //let's start
+            MyLogger.add("si comincia" + Environment.NewLine);
 
             //sgancio thread secondario
             logicThread = new Thread(logicThreadStart);
             logicThread.Start();
+        }
+
+        private void LoadSettings()
+        {
+            BinaryFormatter formatter = new BinaryFormatter();
+            FileStream fin;
+            try
+            {
+                fin = new FileStream(SETTINGS_FILE_PATH, FileMode.Open);
+                settings = (Settings)formatter.Deserialize(fin);
+                fin.Close();
+            }
+            catch (Exception e)
+            {
+                //se non esiste o non riesco a caricare settings:
+                MyLogger.add("Impossibile trovare impostanzioni precedenti");
+                settings = new Settings(DEFAULT_FOLDERROOT_PATH);
+            }
+        }
+
+
+        private void SaveSettings(){
+            BinaryFormatter formatter = new BinaryFormatter();
+            try
+            {
+                FileStream fout = new FileStream(SETTINGS_FILE_PATH, FileMode.Create);
+                formatter.Serialize(fout, settings);
+                fout.Close();
+            }
+            catch (Exception e)
+            {
+                MyLogger.add("impossibile salvare file settings. le impostazioni attuali non saranno salvate");
+                //MyLogger.add(e.Message);
+            }
         }
 
         private void LogicThreadShutDown(){
@@ -110,7 +169,7 @@ namespace ProgettoClient
                 //TODO
                 while(true){
                     //creo un DirMonitor
-                    d = new DirMonitor("C:\\DATI\\poli\\Programmazione di Sistema\\progetto_client\\cartella_test");
+                    d = new DirMonitor(RootFolder);
 
                     //aspetto evento timer o sincronizzazione manuale.
                     while(!SyncNowEventSignaled) //evita spurie
@@ -146,7 +205,9 @@ namespace ProgettoClient
         {
             if (sender.Equals(buttSelSyncSir))
             {
-                ///folderbrowser
+                VistaFolderBrowserDialog folderDiag = new VistaFolderBrowserDialog();
+                folderDiag.ShowDialog();
+                RootFolder = folderDiag.SelectedPath;
             }
         }
 
@@ -162,7 +223,9 @@ namespace ProgettoClient
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            LogicThreadShutDown(); 
+
+            LogicThreadShutDown();
+            SaveSettings();
         }
     }
 }

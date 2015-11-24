@@ -33,7 +33,7 @@ namespace ProgettoClient
 
         public static void line()
         {
-            MyLogger.add("-----------------------------------------------");
+            MyLogger.add("-----------------------------------------------\n");
         }
 
 

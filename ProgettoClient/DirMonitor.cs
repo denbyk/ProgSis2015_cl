@@ -55,10 +55,12 @@ namespace ProgettoClient
             WalkDirectoryTree(myDir, doOnFile);
             deletedFiles = dim.getDeleted();
             dim.storeDirImage();
-            MyLogger.add("deleted files:");
-            foreach (var item in deletedFiles)
-                MyLogger.add(item);
-            MyLogger.add("scanDir done");
+            if (deletedFiles.Count > 0) { 
+                MyLogger.add("deleted files:");
+                foreach (var item in deletedFiles)
+                    MyLogger.add(item);
+            }
+            //MyLogger.add("scanDir done");
             MyLogger.line();
         }
 
@@ -76,7 +78,7 @@ namespace ProgettoClient
     
         private void checkFile(System.IO.FileInfo fi)
         {
-            MyLogger.add(fi.FullName);
+            //MyLogger.add(fi.Name + "\n");
             RecordFile thisFile = new RecordFile(fi);
             FileStatus status = dim.UpdateStatus(thisFile);
             switch (status)
@@ -94,7 +96,8 @@ namespace ProgettoClient
                     //nothing to do
                     break;
             }
-            MyLogger.add(thisFile);
+            //MyLogger.add(thisFile);
+            MyLogger.add(fi.Name + "\n");
         }
 
                 

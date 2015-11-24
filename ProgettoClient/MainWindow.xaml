@@ -3,10 +3,10 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="MainWindow" Height="579" Width="756"
         Closing="Window_Closing">
-    <Grid>
+    <Grid Focusable="True">
         <Button x:Name="buttSelSyncSir" HorizontalAlignment="Left" VerticalAlignment="Top" Width="24" Margin="329,53,0,0" Height="23" Click="Button_Click" Content="...">
         </Button>
-        <RichTextBox x:Name="Log_RichTextBox" HorizontalAlignment="Left" Height="528" Margin="392,10,0,0" VerticalAlignment="Top" Width="346" IsReadOnly="True">
+        <RichTextBox x:Name="Log_RichTextBox" HorizontalAlignment="Left" Height="528" Margin="392,10,0,0" VerticalAlignment="Top" Width="346" IsReadOnly="True" Block.LineHeight="1">
             <FlowDocument>
                 <Paragraph>
                     <Run/>
@@ -22,7 +22,7 @@
         <Button x:Name="buttStartStopSync_Copy1" Content="Ripristina &#xD;&#xA;ultima versione" HorizontalAlignment="Left" Margin="10,229,0,0" VerticalAlignment="Top" Width="152" Height="41"/>
         <TextBlock HorizontalAlignment="Left" Margin="15,167,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="30" Height="20" RenderTransformOrigin="0.667,2.75"><Run Text="ogni:"/><LineBreak/><Run/></TextBlock>
         <TextBlock HorizontalAlignment="Left" Margin="90,167,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="72" Height="20"><Run Text="minuti"/><LineBreak/><Run/></TextBlock>
-        <TextBox HorizontalAlignment="Left" Height="23" Margin="45,164,0,0" TextWrapping="Wrap" Text="1" VerticalAlignment="Top" Width="40" TextAlignment="Center"/>
+        <TextBox x:Name="textboxCycleTime" HorizontalAlignment="Left" Height="23" Margin="45,164,0,0" TextWrapping="Wrap" Text="1" VerticalAlignment="Top" Width="40" TextAlignment="Center" LostFocus="textboxCycleTime_LostFocus" KeyDown="textboxCycleTime_KeyDown"/>
 
     </Grid>
 </Window>

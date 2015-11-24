@@ -11,15 +11,18 @@ namespace ProgettoClient
     class Settings : ISerializable
     {
         public string RootFolder;
+        public double CycleTime;
 
-        public Settings(string RootFolder) 
+        public Settings(string RootFolder, double CycleTime) 
         {
             this.RootFolder = RootFolder;
+            this.CycleTime = CycleTime;
         }
 
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             info.AddValue("RootFolder", RootFolder, typeof(string));
+            info.AddValue("CycleTime", CycleTime, typeof(double));
         }
 
         /// <summary>
@@ -29,6 +32,7 @@ namespace ProgettoClient
         {
             // Reset the property value using the GetValue method.
             this.RootFolder = (string)info.GetValue("RootFolder", typeof(string));
+            this.CycleTime = (double)info.GetValue("CycleTime", typeof(double));
         }
     }
 }

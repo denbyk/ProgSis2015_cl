@@ -33,6 +33,7 @@ namespace ProgettoClient
         private const string SETTINGS_FILE_PATH = "Settings.bin";
         //TODO change this
         private const string DEFAULT_FOLDERROOT_PATH = "C:\\DATI\\poli\\Programmazione di Sistema\\progetto_client\\cartella_test";
+        private const double DEFAULT_CYCLE_TIME = 1;
 
         DirMonitor d;
         DispatcherTimer timerTest;
@@ -45,10 +46,11 @@ namespace ProgettoClient
         bool TerminateLogicThread = false;
 
         private Settings settings;
+
         //private string _rootFolder;
         private string RootFolder
         {
-            get { return settings.RootFolder;}//_rootFolder; }
+            get { return settings.RootFolder; } //_rootFolder; }
             set
             {
                 this.textboxPathSyncDir.Text = value;
@@ -56,7 +58,17 @@ namespace ProgettoClient
             }
         }
 
-        //private string RootFolder = "C:\\DATI\\poli\\Programmazione di Sistema\\progetto_client\\cartella_test";
+        private double CycleTime
+        {
+            get { return settings.CycleTime; }
+            set
+            {
+                this.textboxCycleTime.Text = value.ToString();
+                settings.CycleTime = value; 
+            }
+        }
+
+
         
 
         /// <summary>
@@ -88,6 +100,8 @@ namespace ProgettoClient
 
             //load last settings from file
             LoadSettings();
+
+            ApplySettings();
             
             this.SycnNowEvent = new EventWaitHandle(false, EventResetMode.ManualReset);
 
@@ -96,11 +110,18 @@ namespace ProgettoClient
             ScanInterval = new TimeSpan(0, 0, 3);
 
             //let's start
-            MyLogger.add("si comincia" + Environment.NewLine);
+            MyLogger.add("si comincia\n");
 
             //sgancio thread secondario
             logicThread = new Thread(logicThreadStart);
             logicThread.Start();
+        }
+
+        private void ApplySettings()
+        {
+            //inserisce RootFolder path nella casella di testo
+            this.textboxPathSyncDir.Text = settings.RootFolder;
+            this.textboxCycleTime.Text = settings.CycleTime.ToString();
         }
 
         private void LoadSettings()
@@ -117,7 +138,7 @@ namespace ProgettoClient
             {
                 //se non esiste o non riesco a caricare settings:
                 MyLogger.add("Impossibile trovare impostanzioni precedenti");
-                settings = new Settings(DEFAULT_FOLDERROOT_PATH);
+                settings = new Settings(DEFAULT_FOLDERROOT_PATH, DEFAULT_CYCLE_TIME );
             }
         }
 
@@ -151,7 +172,7 @@ namespace ProgettoClient
 
         private void TimerHandler(object sender, EventArgs e)
         {
-            MyLogger.add("Timer scaduto");
+            MyLogger.add("Timer scaduto\n");
             SyncNowEventSignaled = true;
             SycnNowEvent.Set(); //permette al logicThread di procedere.
             //ricomincia
@@ -227,6 +248,27 @@ namespace ProgettoClient
             LogicThreadShutDown();
             SaveSettings();
         }
+
+        private void textboxCycleTime_LostFocus(object sender, RoutedEventArgs e)
+        {
+            double num;
+            if (!Double.TryParse(textboxCycleTime.Text, out num))
+            {
+                //errore
+                CycleTime = DEFAULT_CYCLE_TIME;
+            }
+            else {
+                CycleTime = num;
+            }
+            MyLogger.add("cycle time = " + CycleTime);
+
+        }
+
+        private void textboxCycleTime_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+                textboxCycleTime.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
+        } 
     }
 }
 

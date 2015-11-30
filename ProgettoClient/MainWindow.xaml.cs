@@ -34,37 +34,67 @@ namespace ProgettoClient
         //TODO change this
         private const string DEFAULT_FOLDERROOT_PATH = "C:\\DATI\\poli\\Programmazione di Sistema\\progetto_client\\cartella_test";
         private const double DEFAULT_CYCLE_TIME = 1;
+        private const bool DEFAULT_AUTOSYNCTOGGLE = false;
+        private const string AUTOSYNC_OFF_TEXT = "Start";
+        private const string AUTOSYNC_ON_TEXT = "Stop";
 
         DirMonitor d;
         DispatcherTimer timerTest;
         Thread logicThread;
 
-        EventWaitHandle SycnNowEvent;
+        EventWaitHandle SyncNowEvent;
         bool SyncNowEventSignaled;
 
 
         bool TerminateLogicThread = false;
 
         private Settings settings;
+        
 
-        //private string _rootFolder;
+        private string _rootFolder;
         private string RootFolder
         {
-            get { return settings.RootFolder; } //_rootFolder; }
+            get { return _rootFolder; } //_rootFolder; }
             set
             {
                 this.textboxPathSyncDir.Text = value;
-                settings.RootFolder = value;//_rootFolder = value;
+                _rootFolder = value;//_rootFolder = value;
             }
         }
 
+        private double _cycleTime;
         private double CycleTime
         {
-            get { return settings.CycleTime; }
+            get { return _cycleTime; }
             set
             {
+                if (value <= 0)
+                    value = 1;
+                int intpart = (int)(Math.Floor(value));
+                ScanInterval = new TimeSpan(0, intpart, (int)(Math.Floor((value-intpart)*60)));
                 this.textboxCycleTime.Text = value.ToString();
-                settings.CycleTime = value; 
+                _cycleTime = value; 
+            }
+        }
+
+        private bool _autoSyncToggle;
+        private bool AutoSync
+        {
+            get { return _autoSyncToggle; }
+            set
+            {
+                if (value) {
+                    buttStartStopAutoSync.Content = AUTOSYNC_ON_TEXT;
+                    timerTest.Start();
+                    MyLogger.add("AutoSync started\n");
+                }
+                else { 
+                    buttStartStopAutoSync.Content = AUTOSYNC_OFF_TEXT;
+                    timerTest.Stop();
+                    MyLogger.add("AutoSync stopped\n");
+                }
+
+                _autoSyncToggle = value;
             }
         }
 
@@ -72,7 +102,7 @@ namespace ProgettoClient
         
 
         /// <summary>
-        /// modificandone il valore il timer è automaticamente resettato.
+        ///modificandone il valore il timer si blocca e va fatto partire.
         /// </summary>
         public TimeSpan ScanInterval
         {
@@ -82,7 +112,7 @@ namespace ProgettoClient
                     value.Add(new TimeSpan(0, 1, 0));
                 timerTest.Stop();
                 timerTest.Interval = value;
-                timerTest.Start();
+                //timerTest.Start();
             }
         }
 
@@ -101,13 +131,14 @@ namespace ProgettoClient
             //load last settings from file
             LoadSettings();
 
-            ApplySettings();
             
-            this.SycnNowEvent = new EventWaitHandle(false, EventResetMode.ManualReset);
+            this.SyncNowEvent = new EventWaitHandle(false, EventResetMode.ManualReset);
 
             timerTest = new System.Windows.Threading.DispatcherTimer();
             timerTest.Tick += new EventHandler(TimerHandler);
-            ScanInterval = new TimeSpan(0, 0, 3);
+            //ScanInterval = new TimeSpan(0, 0, 3);
+
+            ApplySettings();
 
             //let's start
             MyLogger.add("si comincia\n");
@@ -117,11 +148,23 @@ namespace ProgettoClient
             logicThread.Start();
         }
 
+
+        private void ManualSync()
+        {
+            MyLogger.add("Sync in corso...\n");
+            timerTest.Stop();
+            SyncNowEventSignaled = true;
+            SyncNowEvent.Set(); //permette al logicThread di procedere.
+            //TODO: possibile stesso problema di autosync (timer scatta prima che sync finisca?
+            timerTest.Start();
+        }
+
+
         private void ApplySettings()
         {
-            //inserisce RootFolder path nella casella di testo
-            this.textboxPathSyncDir.Text = settings.RootFolder;
-            this.textboxCycleTime.Text = settings.CycleTime.ToString();
+            RootFolder = settings.RootFolder;
+            CycleTime = settings.CycleTime;
+            AutoSync = settings.AutoSyncToggle;
         }
 
         private void LoadSettings()
@@ -138,12 +181,16 @@ namespace ProgettoClient
             {
                 //se non esiste o non riesco a caricare settings:
                 MyLogger.add("Impossibile trovare impostanzioni precedenti");
-                settings = new Settings(DEFAULT_FOLDERROOT_PATH, DEFAULT_CYCLE_TIME );
+                settings = new Settings(DEFAULT_FOLDERROOT_PATH, DEFAULT_CYCLE_TIME, DEFAULT_AUTOSYNCTOGGLE );
             }
         }
 
 
         private void SaveSettings(){
+            settings.RootFolder = RootFolder;
+            settings.CycleTime = CycleTime;
+            settings.AutoSyncToggle = AutoSync;
+
             BinaryFormatter formatter = new BinaryFormatter();
             try
             {
@@ -164,7 +211,7 @@ namespace ProgettoClient
             {
                  TerminateLogicThread = true;
                  SyncNowEventSignaled = true;
-                 SycnNowEvent.Set(); //permette al logicThread di procedere.
+                 SyncNowEvent.Set(); //permette al logicThread di procedere.
             }
             logicThread.Join();
         }
@@ -172,9 +219,12 @@ namespace ProgettoClient
 
         private void TimerHandler(object sender, EventArgs e)
         {
-            MyLogger.add("Timer scaduto\n");
+            MyLogger.add("AutoSync in corso\n");
             SyncNowEventSignaled = true;
-            SycnNowEvent.Set(); //permette al logicThread di procedere.
+            SyncNowEvent.Set(); //permette al logicThread di procedere.
+            
+            //TODO: possibile problema per timer troppo corto -> thread secondario non riesce a stare dietro a tutte le richieste?
+            //possib soluzione: far riprendere il timer dopo che thread secondario ha finito il sync
             //ricomincia
             timerTest.Start();
         }
@@ -194,7 +244,7 @@ namespace ProgettoClient
 
                     //aspetto evento timer o sincronizzazione manuale.
                     while(!SyncNowEventSignaled) //evita spurie
-                        SycnNowEvent.WaitOne();
+                        SyncNowEvent.WaitOne();
                     SyncNowEventSignaled = false;
 
                     lock(this)
@@ -234,7 +284,8 @@ namespace ProgettoClient
 
         private void buttStartStopSync_Click(object sender, RoutedEventArgs e)
         {
-
+            AutoSync = !AutoSync;
+            //TODO: aggiungere attivazione timer
         }
 
         private void writeInLog_RichTextBox(String message)
@@ -268,7 +319,19 @@ namespace ProgettoClient
         {
             if (e.Key == Key.Enter)
                 textboxCycleTime.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
-        } 
+        }
+
+        private void buttStartStopSync_Copy_Click(object sender, RoutedEventArgs e)
+        {
+            ManualSync();
+        }
+
+        private void Log_RichTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            Log_RichTextBox.ScrollToEnd();
+        }
+
+
     }
 }
 

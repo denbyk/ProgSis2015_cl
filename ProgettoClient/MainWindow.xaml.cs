@@ -38,6 +38,9 @@ namespace ProgettoClient
         private const string AUTOSYNC_OFF_TEXT = "Start";
         private const string AUTOSYNC_ON_TEXT = "Stop";
 
+        //todo: not hardcode
+        private const string HARDCODED_SERVER_IP = "127.0.0.1";
+
         DirMonitor d;
         DispatcherTimer timerTest;
         Thread logicThread;
@@ -49,6 +52,7 @@ namespace ProgettoClient
         bool TerminateLogicThread = false;
 
         private Settings settings;
+        private SessionManager sm;
         
 
         private string _rootFolder;
@@ -236,11 +240,17 @@ namespace ProgettoClient
             //siamo nel secondo thread, quello che non gestisce la interfaccia grafica.
             try
             {
-                //inserire chiamata a gestione del login qui.
-                //TODO
+                //inizializzo oggetto per connessione con server
+                sm = new SessionManager(HARDCODED_SERVER_IP);
+
+                //gestione del login
+                sm.login();
+                
                 while(true){
                     //creo un DirMonitor
                     d = new DirMonitor(RootFolder);
+
+                    //parlo con server
 
                     //aspetto evento timer o sincronizzazione manuale.
                     while(!SyncNowEventSignaled) //evita spurie

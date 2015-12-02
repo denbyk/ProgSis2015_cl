@@ -36,6 +36,8 @@ namespace ProgettoClient
         private System.Net.Sockets.TcpClient clientSocket = new System.Net.Sockets.TcpClient();
         private NetworkStream serverStream;
 
+        private bool logged;
+
         private Dictionary<byte[], commandsEnum> commands;
 
         public SessionManager(string serverIP)
@@ -50,6 +52,9 @@ namespace ProgettoClient
 
         public void login(string user, string password)
         {
+            if (logged)
+                logout();
+
             //string -> utf8
             this.user = utf8.GetBytes(user);
 
@@ -71,7 +76,7 @@ namespace ProgettoClient
             switch (strRecFromServer())
             {
                 case commloggedok:
-                    
+                    logged = true;
                     break;
                 case commloginerr:
                     //create_ac?
@@ -127,6 +132,16 @@ namespace ProgettoClient
             System.Buffer.BlockCopy(a, 0, c, 0, a.Length);
             System.Buffer.BlockCopy(b, 0, c, a.Length, b.Length);
             return c;
+        }
+
+        internal void logout()
+        {
+            if (!logged)
+                return;
+
+            throw new NotImplementedException();
+
+            logged = false;
         }
     }
 }

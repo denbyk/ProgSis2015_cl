@@ -102,7 +102,28 @@ namespace ProgettoClient
             }
         }
 
-
+        private string _user;
+        private string User
+        {
+            get { return _user; }
+            set 
+            {
+                textboxUtente.Text = value;
+                sm.logout();
+                _user = value;
+            }
+        }
+        private string _password;
+        private string Password
+        {
+            get { return _password; }
+            set
+            {
+                textboxPassword.Text = value;
+                sm.logout();
+                _password = value;
+            }
+        }
         
 
         /// <summary>
@@ -169,6 +190,8 @@ namespace ProgettoClient
             RootFolder = settings.RootFolder;
             CycleTime = settings.CycleTime;
             AutoSync = settings.AutoSyncToggle;
+            User = settings.User;
+            Password = settings.Passw;
         }
 
         private void LoadSettings()
@@ -244,7 +267,7 @@ namespace ProgettoClient
                 sm = new SessionManager(HARDCODED_SERVER_IP);
 
                 //gestione del login
-                sm.login();
+                sm.login(_user, _password);
                 
                 while(true){
                     //creo un DirMonitor

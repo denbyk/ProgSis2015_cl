@@ -30,6 +30,7 @@ namespace ProgettoClient
         private byte[] user;
         private byte[] hashPassword;
         private byte[] separator_r_n;
+        private byte[] rootFolder;
         
         private UTF8Encoding utf8;
 
@@ -48,6 +49,11 @@ namespace ProgettoClient
             separator_r_n = utf8.GetBytes("\r\n");
             //commands = new Dictionary<byte[],commandsEnum>();
             //commands.Add(utf8.GetBytes(commLogin_str), commandsEnum.login);
+        }
+
+        public void setRootFolder(string rootFolder)
+        {
+            this.rootFolder = utf8.GetBytes(rootFolder);
         }
 
         public void login(string user, string password)
@@ -92,9 +98,10 @@ namespace ProgettoClient
                 clientSocket.Connect(serverIP, serverPort);
                 serverStream = clientSocket.GetStream();
             }
-            catch()
+            catch(Exception e)
             {
-                //TODO
+                MyLogger.add("impossibile connettersi al server");
+                throw;
             }
         }
 
@@ -142,6 +149,21 @@ namespace ProgettoClient
             throw new NotImplementedException();
 
             logged = false;
+        }
+
+        internal void syncDeletedFile(RecordFile f)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal void syncUpdatedFile(RecordFile f)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal void syncNewFiles(RecordFile f)
+        {
+            throw new NotImplementedException();
         }
     }
 }

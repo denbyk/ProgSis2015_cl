@@ -37,6 +37,8 @@ namespace ProgettoClient
         private const bool DEFAULT_AUTOSYNCTOGGLE = false;
         private const string AUTOSYNC_OFF_TEXT = "Start";
         private const string AUTOSYNC_ON_TEXT = "Stop";
+        private const string DEFAULT_USER = "default";
+        private const string DEFAULT_PASSW = "default";
 
         //todo: not hardcode
         private const string HARDCODED_SERVER_IP = "127.0.0.1";
@@ -56,18 +58,18 @@ namespace ProgettoClient
         
 
         private string _rootFolder;
-        private string RootFolder
+        public string RootFolder
         {
             get { return _rootFolder; } //_rootFolder; }
             set
             {
                 this.textboxPathSyncDir.Text = value;
-                _rootFolder = value;//_rootFolder = value;
+                _rootFolder = value;
             }
         }
 
         private double _cycleTime;
-        private double CycleTime
+        public double CycleTime
         {
             get { return _cycleTime; }
             set
@@ -82,7 +84,7 @@ namespace ProgettoClient
         }
 
         private bool _autoSyncToggle;
-        private bool AutoSync
+        public bool AutoSync
         {
             get { return _autoSyncToggle; }
             set
@@ -208,7 +210,7 @@ namespace ProgettoClient
             {
                 //se non esiste o non riesco a caricare settings:
                 MyLogger.add("Impossibile trovare impostanzioni precedenti");
-                settings = new Settings(DEFAULT_FOLDERROOT_PATH, DEFAULT_CYCLE_TIME, DEFAULT_AUTOSYNCTOGGLE );
+                settings = new Settings(DEFAULT_FOLDERROOT_PATH, DEFAULT_CYCLE_TIME, DEFAULT_AUTOSYNCTOGGLE, DEFAULT_USER, DEFAULT_PASSW);
             }
         }
 
@@ -267,13 +269,32 @@ namespace ProgettoClient
                 sm = new SessionManager(HARDCODED_SERVER_IP);
 
                 //gestione del login
-                sm.login(_user, _password);
+                sm.login(User, Password);
+                
+                //selezione cartella
+                sm.setRootFolder(RootFolder);
                 
                 while(true){
-                    //creo un DirMonitor
+                    //creo un DirMonitor che analizza la cartella
                     d = new DirMonitor(RootFolder);
+                    HashSet<RecordFile> buffer;
 
-                    //parlo con server
+                    //estraggo i vari record dei file e li sincronizzo con il server
+                    buffer = d.getUpdatedFiles();
+                    foreach (var f in buffer)
+                    {
+                        sm.syncUpdatedFile(f);
+                    }
+                    buffer = d.getNewFiles();
+                    foreach (var f in buffer)
+                    {
+                        sm.syncNewFiles(f);
+                    }
+                    buffer = d.getDeletedFiles();
+                    foreach (var f in buffer)
+                    {
+                        sm.syncDeletedFile(f);
+                    }
 
                     //aspetto evento timer o sincronizzazione manuale.
                     while(!SyncNowEventSignaled) //evita spurie
@@ -302,6 +323,7 @@ namespace ProgettoClient
             MyLogger.add("logicThreadStart sta per uscire");
             //TODO ??? 
             //il logic thread si sta chiudendo (magari perchè utente ha chiuso il programma, eventualmente chiudere connessioni varie.
+            sm.logout(); //è sufficiente?
         }
 
 
@@ -368,3 +390,10 @@ namespace ProgettoClient
     }
 }
 
+//TODO:
+/* 
+ * quando utente cambia qualcosa in user/psw/cartella il thread 
+ * principale deve aggiornare i dati (cosa che fa) e dirlo al thread secondario!
+ * attenzione a eventuali zone critiche!!!
+ * 
+*/

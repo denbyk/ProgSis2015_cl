@@ -24,6 +24,10 @@ namespace ProgettoClient
         private HashSet<RecordFile> updatedFiles = new HashSet<RecordFile>();
         private HashSet<RecordFile> deletedFiles = new HashSet<RecordFile>();
         
+
+        public HashSet<RecordFile> getNewFiles() { return newFiles; }
+        public HashSet<RecordFile> getUpdatedFiles() { return updatedFiles; }
+        public HashSet<RecordFile> getDeletedFiles() { return deletedFiles; }
         
         /// <summary>
         /// costruttore
@@ -41,13 +45,6 @@ namespace ProgettoClient
             scanDir();
             
         }
-
-        //private void TimerHandler(object sender, EventArgs e)
-        //{
-        //    scanDir();
-        //    //ricomincia
-        //    timer.Start();
-        //}
 
 
         public void scanDir()

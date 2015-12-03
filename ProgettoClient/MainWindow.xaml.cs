@@ -55,78 +55,46 @@ namespace ProgettoClient
 
         private Settings settings;
         private SessionManager sm;
-        
 
-        private string _rootFolder;
-        public string RootFolder
+        private void applyScanInterval(double CycleTime)
         {
-            get { return _rootFolder; } //_rootFolder; }
-            set
+            if (CycleTime <= 0)
+                CycleTime = 1;
+            int intpart = (int)(Math.Floor(CycleTime));
+            ScanInterval = new TimeSpan(0, intpart, (int)(Math.Floor((CycleTime - intpart) * 60)));
+            this.textboxCycleTime.Text = CycleTime.ToString();
+        }
+
+        private void applyAutoSync(bool autoSync)
+        {
+            if (autoSync)
             {
-                this.textboxPathSyncDir.Text = value;
-                _rootFolder = value;
+                buttStartStopAutoSync.Content = AUTOSYNC_ON_TEXT;
+                timerTest.Start();
+                MyLogger.add("AutoSync started\n");
+            }
+            else
+            {
+                buttStartStopAutoSync.Content = AUTOSYNC_OFF_TEXT;
+                timerTest.Stop();
+                MyLogger.add("AutoSync stopped\n");
             }
         }
 
-        private double _cycleTime;
-        public double CycleTime
+
+        private void applyUser(string User)
         {
-            get { return _cycleTime; }
-            set
-            {
-                if (value <= 0)
-                    value = 1;
-                int intpart = (int)(Math.Floor(value));
-                ScanInterval = new TimeSpan(0, intpart, (int)(Math.Floor((value-intpart)*60)));
-                this.textboxCycleTime.Text = value.ToString();
-                _cycleTime = value; 
-            }
+            this.textboxUtente.Text = User;
+            sm.logout(); //TODO: attenzione, questo deve essere sincronizzato con il thread logico! ancora meglio se glielo faccio fare a lui.
         }
 
-        private bool _autoSyncToggle;
-        public bool AutoSync
-        {
-            get { return _autoSyncToggle; }
-            set
-            {
-                if (value) {
-                    buttStartStopAutoSync.Content = AUTOSYNC_ON_TEXT;
-                    timerTest.Start();
-                    MyLogger.add("AutoSync started\n");
-                }
-                else { 
-                    buttStartStopAutoSync.Content = AUTOSYNC_OFF_TEXT;
-                    timerTest.Stop();
-                    MyLogger.add("AutoSync stopped\n");
-                }
 
-                _autoSyncToggle = value;
-            }
+        private void applyPassw(string Password)
+        {
+            textboxPassword.Text = Password;
+            sm.logout(); //TODO: attenzione, questo deve essere sincronizzato con il thread logico! ancora meglio se glielo faccio fare a lui.
         }
 
-        private string _user;
-        private string User
-        {
-            get { return _user; }
-            set 
-            {
-                textboxUtente.Text = value;
-                sm.logout();
-                _user = value;
-            }
-        }
-        private string _password;
-        private string Password
-        {
-            get { return _password; }
-            set
-            {
-                textboxPassword.Text = value;
-                sm.logout();
-                _password = value;
-            }
-        }
-        
 
         /// <summary>
         ///modificandone il valore il timer si blocca e va fatto partire.
@@ -148,7 +116,7 @@ namespace ProgettoClient
         {
             //init UI
             InitializeComponent();
-            
+
             //init delegates
             DelWriteLog = writeInLog_RichTextBox;
 
@@ -158,7 +126,7 @@ namespace ProgettoClient
             //load last settings from file
             LoadSettings();
 
-            
+
             this.SyncNowEvent = new EventWaitHandle(false, EventResetMode.ManualReset);
 
             timerTest = new System.Windows.Threading.DispatcherTimer();
@@ -189,12 +157,14 @@ namespace ProgettoClient
 
         private void ApplySettings()
         {
-            RootFolder = settings.RootFolder;
-            CycleTime = settings.CycleTime;
-            AutoSync = settings.AutoSyncToggle;
-            User = settings.User;
-            Password = settings.Passw;
+            this.textboxPathSyncDir.Text = settings.getRootFolder();
+            this.applyScanInterval(settings.getCycleTime());
+            this.applyAutoSync(settings.getAutoSyncToggle());
+            this.applyUser(settings.getUser());
+            this.applyPassw(settings.getPassw());
         }
+
+
 
         private void LoadSettings()
         {
@@ -215,11 +185,8 @@ namespace ProgettoClient
         }
 
 
-        private void SaveSettings(){
-            settings.RootFolder = RootFolder;
-            settings.CycleTime = CycleTime;
-            settings.AutoSyncToggle = AutoSync;
-
+        private void SaveSettings()
+        {
             BinaryFormatter formatter = new BinaryFormatter();
             try
             {
@@ -234,13 +201,14 @@ namespace ProgettoClient
             }
         }
 
-        private void LogicThreadShutDown(){
+        private void LogicThreadShutDown()
+        {
             //per chiudere il LogicThread in modo ordinato
-            lock(this)
+            lock (this)
             {
-                 TerminateLogicThread = true;
-                 SyncNowEventSignaled = true;
-                 SyncNowEvent.Set(); //permette al logicThread di procedere.
+                TerminateLogicThread = true;
+                SyncNowEventSignaled = true;
+                SyncNowEvent.Set(); //permette al logicThread di procedere.
             }
             logicThread.Join();
         }
@@ -251,7 +219,7 @@ namespace ProgettoClient
             MyLogger.add("AutoSync in corso\n");
             SyncNowEventSignaled = true;
             SyncNowEvent.Set(); //permette al logicThread di procedere.
-            
+
             //TODO: possibile problema per timer troppo corto -> thread secondario non riesce a stare dietro a tutte le richieste?
             //possib soluzione: far riprendere il timer dopo che thread secondario ha finito il sync
             //ricomincia
@@ -260,7 +228,7 @@ namespace ProgettoClient
 
 
 
-        private void logicThreadStart() 
+        private void logicThreadStart()
         {
             //siamo nel secondo thread, quello che non gestisce la interfaccia grafica.
             try
@@ -269,14 +237,15 @@ namespace ProgettoClient
                 sm = new SessionManager(HARDCODED_SERVER_IP);
 
                 //gestione del login
-                sm.login(User, Password);
-                
+                sm.login(settings.getUser(), settings.getPassw());
+
                 //selezione cartella
-                sm.setRootFolder(RootFolder);
-                
-                while(true){
+                sm.setRootFolder(settings.getRootFolder());
+
+                while (true)
+                {
                     //creo un DirMonitor che analizza la cartella
-                    d = new DirMonitor(RootFolder);
+                    d = new DirMonitor(settings.getRootFolder());
                     HashSet<RecordFile> buffer;
 
                     //estraggo i vari record dei file e li sincronizzo con il server
@@ -297,11 +266,11 @@ namespace ProgettoClient
                     }
 
                     //aspetto evento timer o sincronizzazione manuale.
-                    while(!SyncNowEventSignaled) //evita spurie
+                    while (!SyncNowEventSignaled) //evita spurie
                         SyncNowEvent.WaitOne();
                     SyncNowEventSignaled = false;
 
-                    lock(this)
+                    lock (this)
                     {
                         //verifico se devo terminare il thread
                         if (TerminateLogicThread)
@@ -333,13 +302,13 @@ namespace ProgettoClient
             {
                 VistaFolderBrowserDialog folderDiag = new VistaFolderBrowserDialog();
                 folderDiag.ShowDialog();
-                RootFolder = folderDiag.SelectedPath;
+                settings.setRootFolder(folderDiag.SelectedPath);
             }
         }
 
         private void buttStartStopSync_Click(object sender, RoutedEventArgs e)
         {
-            AutoSync = !AutoSync;
+            settings.setAutoSyncToggle(!settings.getAutoSyncToggle());
             //TODO: aggiungere attivazione timer
         }
 
@@ -361,12 +330,13 @@ namespace ProgettoClient
             if (!Double.TryParse(textboxCycleTime.Text, out num))
             {
                 //errore
-                CycleTime = DEFAULT_CYCLE_TIME;
+                settings.setCycleTime(DEFAULT_CYCLE_TIME);
             }
-            else {
-                CycleTime = num;
+            else
+            {
+                settings.setCycleTime(num);
             }
-            MyLogger.add("cycle time = " + CycleTime);
+            MyLogger.add("cycle time = " + settings.getCycleTime());
 
         }
 

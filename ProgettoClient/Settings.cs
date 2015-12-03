@@ -11,16 +11,29 @@ namespace ProgettoClient
     class Settings : ISerializable
     {
         //cartella di sincronizzazione
-        public string RootFolder;
+        private string RootFolder;
         //tempo di ciclo. quando finisce viene fatta la sincronizzazione automatica se attiva.
-        public double CycleTime;
+        private double CycleTime;
         //stato on/off della sincronizzazione automatica
-        public bool AutoSyncToggle;
+        private bool AutoSyncToggle;
         //user/psw
-        public string User;
-        public string Passw; //TODO: ? passw salvata ~ in chiaro su hd. è un problema?
+        private string User;
+        private string Passw; //TODO: ? passw salvata ~ in chiaro su hd. è un problema?
 
-        public Settings(string RootFolder, double CycleTime, bool AutoSyncToggle, string User, string Passw) 
+        public string getRootFolder() { return RootFolder; }
+        public double getCycleTime() { return CycleTime; }
+        public bool getAutoSyncToggle() { return AutoSyncToggle; }
+        public string getUser() { return User; }
+        public string getPassw() { return Passw; }
+
+        public void setRootFolder(string RootFolder) { this.RootFolder = RootFolder; }
+        public void setCycleTime(double CycleTime) { this.CycleTime = CycleTime; }
+        public void setAutoSyncToggle(bool AutoSyncToggle) { this.AutoSyncToggle = AutoSyncToggle; }
+        public void setUser(string User) { this.User = User; }
+        public void setPassw(string Passw) { this.Passw = Passw; }
+
+
+        public Settings(string RootFolder, double CycleTime, bool AutoSyncToggle, string User, string Passw)
         {
             this.RootFolder = RootFolder;
             this.CycleTime = CycleTime;

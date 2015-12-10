@@ -18,6 +18,7 @@ using System.Windows.Shapes;
 using System.Threading;
 using System.Windows.Threading;
 using Ookii.Dialogs.Wpf;
+using System.Net.Sockets;
 
 
 namespace ProgettoClient
@@ -39,6 +40,7 @@ namespace ProgettoClient
         private const string AUTOSYNC_ON_TEXT = "Stop";
         private const string DEFAULT_USER = "default";
         private const string DEFAULT_PASSW = "default";
+        private const int HARDCODED_SERVER_PORT = 8888;
 
         //todo: not hardcode
         private const string HARDCODED_SERVER_IP = "127.0.0.1";
@@ -55,6 +57,7 @@ namespace ProgettoClient
 
         private Settings settings;
         private SessionManager sm;
+
 
         private void applyScanInterval(double CycleTime)
         {
@@ -85,14 +88,12 @@ namespace ProgettoClient
         private void applyUser(string User)
         {
             this.textboxUtente.Text = User;
-            sm.logout(); //TODO: attenzione, questo deve essere sincronizzato con il thread logico! ancora meglio se glielo faccio fare a lui.
         }
 
 
         private void applyPassw(string Password)
         {
             textboxPassword.Text = Password;
-            sm.logout(); //TODO: attenzione, questo deve essere sincronizzato con il thread logico! ancora meglio se glielo faccio fare a lui.
         }
 
 
@@ -234,58 +235,50 @@ namespace ProgettoClient
             try
             {
                 //inizializzo oggetto per connessione con server
-                sm = new SessionManager(HARDCODED_SERVER_IP);
+                sm = new SessionManager(HARDCODED_SERVER_IP, HARDCODED_SERVER_PORT);
+                bool connected = false;
 
-                //gestione del login
-                sm.login(settings.getUser(), settings.getPassw());
-
-                //selezione cartella
-                sm.setRootFolder(settings.getRootFolder());
-
-                while (true)
+                while (!connected)
                 {
-                    //creo un DirMonitor che analizza la cartella
-                    d = new DirMonitor(settings.getRootFolder());
-                    HashSet<RecordFile> buffer;
+                    try
+                    {
+                        //gestione del login
+                        sm.login(settings.getUser(), settings.getPassw());
+                        connected = true;
+                        
+                        //selezione cartella
+                        sm.setRootFolder(settings.getRootFolder());
 
-                    //estraggo i vari record dei file e li sincronizzo con il server
-                    buffer = d.getUpdatedFiles();
-                    foreach (var f in buffer)
-                    {
-                        sm.syncUpdatedFile(f);
-                    }
-                    buffer = d.getNewFiles();
-                    foreach (var f in buffer)
-                    {
-                        sm.syncNewFiles(f);
-                    }
-                    buffer = d.getDeletedFiles();
-                    foreach (var f in buffer)
-                    {
-                        sm.syncDeletedFile(f);
+                        //ciclo finchè la connessione è attiva. si esce solo con eccezione o con chiusura thread logico.
+                        while (true)
+                        {
+                            //creo un DirMonitor che analizza la cartella
+                            d = new DirMonitor(settings.getRootFolder());
+                            SyncAll();
+
+                            WaitForSyncTime();
+
+                            //TODO: il thread logico se è in attesa di una sincronizzazione non controlla se si deve chiudere.
+                            lock (this)
+                            {
+                                //verifico se devo terminare il thread
+                                if (TerminateLogicThread)
+                                    break;
+                            }
+                        } 
+                        //il break esce qui
+                    } 
+                    catch (SocketException e) {
+                        MyLogger.add("impossibile connettersi. Nuovo tentativo alla prossima sincronizzazione.");
+                        connected = false; //ripete login e selezione cartella dopo attesa
+                        WaitForSyncTime();
                     }
 
-                    //aspetto evento timer o sincronizzazione manuale.
-                    while (!SyncNowEventSignaled) //evita spurie
-                        SyncNowEvent.WaitOne();
-                    SyncNowEventSignaled = false;
-
-                    lock (this)
-                    {
-                        //verifico se devo terminare il thread
-                        if (TerminateLogicThread)
-                            break;
-                    }
-                }
+                } //fine while(!connected)
             }
-            catch (Exception e)
-            {
-                MyLogger.line();
-                MyLogger.line();
+            catch (Exception e) {
                 MyLogger.line();
                 MyLogger.add(e.Message);
-                MyLogger.line();
-                MyLogger.line();
                 MyLogger.line();
                 throw;
             }
@@ -293,6 +286,41 @@ namespace ProgettoClient
             //TODO ??? 
             //il logic thread si sta chiudendo (magari perchè utente ha chiuso il programma, eventualmente chiudere connessioni varie.
             sm.logout(); //è sufficiente?
+        }
+
+        
+        /// <summary>
+        /// estraggo i vari record dei file e li sincronizzo con il server
+        /// </summary>
+        private void SyncAll()
+        {
+            HashSet<RecordFile> buffer;
+            buffer = d.getUpdatedFiles();
+            foreach (var f in buffer)
+            {
+                sm.syncUpdatedFile(f);
+            }
+            buffer = d.getNewFiles();
+            foreach (var f in buffer)
+            {
+                sm.syncNewFiles(f);
+            }
+            buffer = d.getDeletedFiles();
+            foreach (var f in buffer)
+            {
+                sm.syncDeletedFile(f);
+            }
+        }
+
+        
+        /// <summary>
+        /// aspetto evento timer o sincronizzazione manuale.
+        /// </summary>
+        private void WaitForSyncTime()
+        {
+            while (!SyncNowEventSignaled) //evita spurie
+                SyncNowEvent.WaitOne();
+            SyncNowEventSignaled = false;
         }
 
 

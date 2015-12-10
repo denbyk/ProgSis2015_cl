@@ -41,10 +41,12 @@ namespace ProgettoClient
 
         private Dictionary<byte[], commandsEnum> commands;
 
-        public SessionManager(string serverIP)
+        public SessionManager(string serverIP, int serverPort)
         {
             utf8 = new UTF8Encoding();
             this.serverIP = serverIP;
+
+            this.serverPort = serverPort;
 
             separator_r_n = utf8.GetBytes("\r\n");
             //commands = new Dictionary<byte[],commandsEnum>();
@@ -61,6 +63,9 @@ namespace ProgettoClient
             if (logged)
                 logout();
 
+            if (!clientSocket.Connected)
+                newConnection();
+
             //string -> utf8
             this.user = utf8.GetBytes(user);
 
@@ -69,8 +74,7 @@ namespace ProgettoClient
             //hash(utf8(psw))
             this.hashPassword = mySha256.ComputeHash(utf8psw, 0, utf8psw.Length);
 
-            if (!clientSocket.Connected)
-                newConnection();
+
             
             sendToServer(commLogin_str);
             
@@ -98,9 +102,9 @@ namespace ProgettoClient
                 clientSocket.Connect(serverIP, serverPort);
                 serverStream = clientSocket.GetStream();
             }
-            catch(Exception e)
+            catch(SocketException e)
             {
-                MyLogger.add("impossibile connettersi al server");
+                MyLogger.add("Collegamento al server fallito");
                 throw;
             }
         }

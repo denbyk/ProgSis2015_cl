@@ -6,7 +6,7 @@
     <Grid Focusable="True" Margin="2,0,-2,0">
         <Button x:Name="buttSelSyncSir" HorizontalAlignment="Left" VerticalAlignment="Top" Width="24" Margin="330,84,0,0" Height="23" Click="Button_Click" Content="...">
         </Button>
-        <RichTextBox x:Name="Log_RichTextBox" HorizontalAlignment="Left" Height="528" Margin="359,10,0,0" VerticalAlignment="Top" Width="379" IsReadOnly="True" Block.LineHeight="1" TextChanged="Log_RichTextBox_TextChanged">
+        <RichTextBox x:Name="Log_RichTextBox" HorizontalAlignment="Left" Height="528" Margin="359,10,0,0" VerticalAlignment="Top" Width="379" IsReadOnly="True"  TextChanged="Log_RichTextBox_TextChanged" Block.LineHeight="1">
             <FlowDocument>
                 <Paragraph>
                     <Run/>
@@ -17,7 +17,7 @@
         <TextBlock HorizontalAlignment="Left" Margin="11,63,0,0" TextWrapping="Wrap" Text="Cartella Sincronizzata" VerticalAlignment="Top" Width="120"/>
         <Button x:Name="buttStartStopAutoSync" Content="Start" HorizontalAlignment="Left" Margin="13,173,0,0" VerticalAlignment="Top" Width="152" Height="41" Click="buttStartStopSync_Click"/>
         <TextBlock HorizontalAlignment="Left" Margin="13,148,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="152" Height="20"><Run Text="Sincronizzazione Automatica"/><LineBreak/><Run/></TextBlock>
-        <Button x:Name="buttStartStopSync_Copy" Content="Sincronizza Ora" HorizontalAlignment="Left" Margin="175,173,0,0" VerticalAlignment="Top" Width="152" Height="41" Click="buttStartStopSync_Copy_Click"/>
+        <Button x:Name="buttManualStartStopSync" Content="Sincronizza Ora" HorizontalAlignment="Left" Margin="175,173,0,0" VerticalAlignment="Top" Width="152" Height="41" Click="buttManualStartStopSync_Click"/>
         <TextBlock HorizontalAlignment="Left" Margin="175,148,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="152" Height="20"><Run Text="Sincronizzazione "/><Run Text="Manuale"/><LineBreak/><Run Text="+"/><LineBreak/><Run/></TextBlock>
         <Button x:Name="buttStartStopSync_Copy1" Content="Ripristina &#xD;&#xA;ultima versione" HorizontalAlignment="Left" Margin="13,247,0,0" VerticalAlignment="Top" Width="152" Height="41"/>
         <TextBlock HorizontalAlignment="Left" Margin="18,222,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="30" Height="20" RenderTransformOrigin="0.667,2.75"><Run Text="ogni:"/><LineBreak/><Run/></TextBlock>
@@ -27,7 +27,7 @@
         <TextBlock HorizontalAlignment="Left" Margin="150,22,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="54" Height="17"><Run Text="Password"/><LineBreak/><Run/></TextBlock>
         <TextBox x:Name="textboxUtente" HorizontalAlignment="Left" Height="19" Margin="11,39,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="120" TextAlignment="Center" LostFocus="textboxCycleTime_LostFocus" KeyDown="textboxCycleTime_KeyDown"/>
         <TextBox x:Name="textboxPassword" HorizontalAlignment="Left" Height="19" Margin="150,39,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="120" TextAlignment="Center" LostFocus="textboxCycleTime_LostFocus" KeyDown="textboxCycleTime_KeyDown"/>
-        <Button x:Name="buttLogin" Content="Login" HorizontalAlignment="Left" Margin="275,39,0,0" VerticalAlignment="Top" Width="50" Height="19" Click="buttStartStopSync_Click"/>
+        <Button x:Name="buttLogin" Content="Login" HorizontalAlignment="Left" Margin="275,39,0,0" VerticalAlignment="Top" Width="50" Height="19"/>
 
     </Grid>
 </Window>

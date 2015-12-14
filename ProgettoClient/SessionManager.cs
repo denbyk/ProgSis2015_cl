@@ -22,8 +22,12 @@ namespace ProgettoClient
         private const int commLength = 8;
         private const string commLogin_str = "LOGIN___";
         private const string commLogout_str = "LOGOUT__";
+        private const string commSetFold_str = "SET_FOLD";
+        private const string commClrFolder_str = "SET_FOLD";
+        private const string commFolderOk = "FOLDEROK";
         private const string commloggedok = "LOGGEDOK";
         private const string commloginerr = "LOGINERR";
+        //todo: inserire commDBError
 
         private string serverIP;
         private int serverPort;
@@ -41,21 +45,44 @@ namespace ProgettoClient
 
         private Dictionary<byte[], commandsEnum> commands;
 
-        public SessionManager(string serverIP, int serverPort)
+        private MainWindow mainWindow;
+
+        public SessionManager(string serverIP, int serverPort, MainWindow mainWindow)
         {
-            utf8 = new UTF8Encoding();
             this.serverIP = serverIP;
-
             this.serverPort = serverPort;
+            this.mainWindow = mainWindow;
 
+            utf8 = new UTF8Encoding();
             separator_r_n = utf8.GetBytes("\r\n");
-            //commands = new Dictionary<byte[],commandsEnum>();
-            //commands.Add(utf8.GetBytes(commLogin_str), commandsEnum.login);
         }
 
         public void setRootFolder(string rootFolder)
         {
             this.rootFolder = utf8.GetBytes(rootFolder);
+            sendToServer(commSetFold_str);
+            sendToServer(this.rootFolder);
+            if (strRecFromServer().Equals(commFolderOk)) //dovrebbe ricevere sempre FOLDEROK
+            {
+                MyLogger.add("cartella selezionata correttamente.\n");
+            }
+            else
+            {
+                throw new UnknownServerResponseException();
+            }
+        }
+
+        public void clearRootFolder()
+        {
+            sendToServer(commClrFolder_str);
+            if (strRecFromServer().Equals(commFolderOk)) 
+            { 
+                this.rootFolder = null;
+            }
+            else
+            {
+                throw new UnknownServerResponseException();
+            }
         }
 
         public void login(string user, string password)
@@ -74,8 +101,6 @@ namespace ProgettoClient
             //hash(utf8(psw))
             this.hashPassword = mySha256.ComputeHash(utf8psw, 0, utf8psw.Length);
 
-
-            
             sendToServer(commLogin_str);
             
             //invio "[username]\r\n[sha-256_password]\r\n"
@@ -83,16 +108,33 @@ namespace ProgettoClient
             userPassword = ConcatByte(userPassword, this.hashPassword);
             userPassword = ConcatByte(userPassword, this.separator_r_n);
             sendToServer(userPassword);
-            switch (strRecFromServer())
+            switch (commloggedok)//strRecFromServer()) TODO:ripristinare chiamata
             {
                 case commloggedok:
                     logged = true;
                     break;
                 case commloginerr:
                     //create_ac?
+                    MyLogger.add("errore nel login\n");
+                    bool wantNewAcc = (bool) mainWindow.Dispatcher.Invoke(mainWindow.DelAskNewAccount);
+                    if (wantNewAcc)
+                    {
+                        createAccount();
+                        login(user, password);
+                        return;
+                    }
+                    else
+                    {
+                        throw new LoginFailedException();
+                    }
                     break;
             }
             
+        }
+
+        private void createAccount()
+        {
+            throw new NotImplementedException();
         }
 
         private void newConnection()
@@ -102,7 +144,7 @@ namespace ProgettoClient
                 clientSocket.Connect(serverIP, serverPort);
                 serverStream = clientSocket.GetStream();
             }
-            catch(SocketException e)
+            catch(SocketException)
             {
                 MyLogger.add("Collegamento al server fallito");
                 throw;
@@ -126,8 +168,6 @@ namespace ProgettoClient
         {
             serverStream.Write(toSend, 0, toSend.Length);
             serverStream.Flush();
-
-            //TODO: dopo un comando devo aspettare un qualche ack dal server?
         }
 
         //conversione se uso string
@@ -150,7 +190,8 @@ namespace ProgettoClient
             if (!logged)
                 return;
 
-            throw new NotImplementedException();
+            //TODO: implementare
+            //throw new NotImplementedException();
 
             logged = false;
         }
@@ -170,4 +211,11 @@ namespace ProgettoClient
             throw new NotImplementedException();
         }
     }
+
+    class LoginFailedException : Exception
+    {
+    }
+
+    class UnknownServerResponseException : Exception
+    { }
 }

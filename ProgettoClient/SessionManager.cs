@@ -189,15 +189,16 @@ namespace ProgettoClient
         {
             if (!logged)
                 return;
-
+            
             //TODO: implementare
             //throw new NotImplementedException();
-
+            
             logged = false;
         }
 
         internal void syncDeletedFile(RecordFile f)
         {
+            
             throw new NotImplementedException();
         }
 
@@ -219,3 +220,6 @@ namespace ProgettoClient
     class UnknownServerResponseException : Exception
     { }
 }
+
+
+//fnaslf

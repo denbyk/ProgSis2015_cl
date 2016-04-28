@@ -117,8 +117,10 @@ namespace ProgettoClient
 
         private Settings settings;
         private SessionManager sm;
+        private RecoverWindow recoverW;
 
-        //i metodi apply* modificano l'interfaccia grafica per adattarla alle settings. non sono da usare per recepire le modifiche DA interfaccia.
+        ///i metodi apply* modificano l'interfaccia grafica per adattarla alle settings. 
+        ///non sono da usare per recepire le modifiche DA interfaccia.
         private void applyScanInterval(double CycleTime)
         {
             if (CycleTime <= 0)
@@ -239,13 +241,18 @@ namespace ProgettoClient
         private void ManualSync()
         {
             MyLogger.add("Sync in corso...\n");
-            SyncTimer.Stop();
+            bool wasAutoSyncOn = SyncTimer.IsEnabled;
+            
+            if(wasAutoSyncOn)
+                SyncTimer.Stop();
 
             SyncNowEventSignaled = true;
 
             SyncNowEvent.Set(); //permette al logicThread di procedere.
+            
             //TODO: possibile stesso problema di autosync (timer scatta prima che sync finisca?
-            SyncTimer.Start();
+            if(wasAutoSyncOn)
+                SyncTimer.Start();
         }
 
 
@@ -505,6 +512,12 @@ namespace ProgettoClient
             Log_RichTextBox.ScrollToEnd();
         }
 
+        private void buttRecover_Click(object sender, RoutedEventArgs e)
+        {
+            recoverW = new RecoverWindow();
+            recoverW.Owner = this;
+            recoverW.ShowDialog();
+        }
 
     }
 }   

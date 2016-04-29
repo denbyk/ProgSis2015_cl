@@ -65,7 +65,8 @@ namespace ProgettoClient
         }
 
         /// <summary>
-        /// restituisce il formato corretto per la spediziona sul socket
+        /// restituisce il formato corretto del RecordFile per la spediziona sul socket
+        /// Nome completo file\r\n | Dimensione file (8 Byte) | Hash del file (16 Byte) | Timestamp (8 Byte)
         /// </summary>
         /// <returns></returns>
         public string toSendFormat()

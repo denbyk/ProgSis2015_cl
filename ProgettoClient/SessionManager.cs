@@ -24,9 +24,18 @@ namespace ProgettoClient
         private const string commLogout_str = "LOGOUT__";
         private const string commSetFold_str = "SET_FOLD";
         private const string commClrFolder_str = "SET_FOLD";
+        private const string commDeleteFile = "DEL_FILE";
+        private const string commNewFile = "NEW_FILE";
+        private const string commUpdFile = "UPD_FILE";
+
         private const string commFolderOk = "FOLDEROK";
         private const string commloggedok = "LOGGEDOK";
         private const string commloginerr = "LOGINERR";
+        private const string commCmdAckFromServer = "CMND_REC";
+        private const string commInfoAckFromServer = "INFO_OK_";
+        private const string commDataAckFromServer = "DATA_OK_";
+        
+
         //todo: inserire commDBError
 
         private string serverIP;
@@ -151,7 +160,7 @@ namespace ProgettoClient
             }
         }
 
-        private string strRecFromServer() 
+        private string strRecFromServer() //TODO: idea: se qui controllo e se il server mi ha inviato DB_ERROR lanciassi una eccezione?
         {
             return utf8.GetString(receiveFromServer());
         }
@@ -159,7 +168,7 @@ namespace ProgettoClient
         private byte[] receiveFromServer()
         {
             byte[] res = new byte[commLength];
-            serverStream.Read(res, 0, res.Length);
+            serverStream.Read(res, 0, res.Length); //TODO: e se la connessione si interrompe?
             return res;
         }
 
@@ -168,6 +177,14 @@ namespace ProgettoClient
         {
             serverStream.Write(toSend, 0, toSend.Length);
             serverStream.Flush();
+        }
+
+        private void waitForAck(string ackExpected)
+        {
+            string ack = strRecFromServer();
+            if (ack == ackExpected)
+                return;
+            throw new AckErrorException();
         }
 
         //conversione se uso string
@@ -185,29 +202,72 @@ namespace ProgettoClient
             return c;
         }
 
-        internal void logout()
+        internal void logout() //TODO: test it.
         {
             if (!logged)
                 return;
-            
-            //TODO: implementare
-            //throw new NotImplementedException();
-            
+
+            sendToServer(commLogout_str);
+            MyLogger.add("disconnessione in corso...");
+
+            waitForAck(commCmdAckFromServer);
+
+            MyLogger.add("disconnessione effettuata\n");
+
             logged = false;
+        
         }
 
-        internal void syncDeletedFile(RecordFile f)
+
+        internal void syncDeletedFile(RecordFile rf) 
         {
-            
-            throw new NotImplementedException();
+            sendToServer(commDeleteFile);
+            waitForAck(commCmdAckFromServer);
+
+            sendToServer(rf.toSendFormat());
+            waitForAck(commInfoAckFromServer);
+
+            //throw new NotImplementedException();
         }
 
-        internal void syncUpdatedFile(RecordFile f)
+        internal void syncUpdatedFile(RecordFile rf)
         {
-            throw new NotImplementedException();
+            sendToServer(commUpdFile);
+            waitForAck(commCmdAckFromServer);
+            SendWholeFileToServer(rf);
         }
 
-        internal void syncNewFiles(RecordFile f)
+        internal void syncNewFiles(RecordFile rf)
+        {
+            sendToServer(commNewFile);
+            waitForAck(commCmdAckFromServer);
+
+            SendWholeFileToServer(rf);
+        }
+
+        private void SendWholeFileToServer(RecordFile rf)
+        {
+            int tryes = 0;
+            while (tryes < 6) { 
+                //invio info del file
+                sendToServer(rf.toSendFormat());
+                waitForAck(commInfoAckFromServer); //TODO: da controllare che non esca un SNDAGAIN già qui.
+                
+                //invio contenuto del file
+                sendFileContent(rf);
+
+                /////DA CONTROLLARE, INTERROTTO QUI
+                if (strRecFromServer() == "SNDAGAIN") {
+                    tryes++;
+                    continue;
+                }
+
+                    
+            }
+
+        }
+
+        private void sendFileContent(RecordFile f)
         {
             throw new NotImplementedException();
         }
@@ -217,9 +277,12 @@ namespace ProgettoClient
     {
     }
 
+    class AckErrorException : Exception
+    { }
+
     class UnknownServerResponseException : Exception
     { }
 }
 
 
-//fnaslf
+//TODO:test all SessionManager

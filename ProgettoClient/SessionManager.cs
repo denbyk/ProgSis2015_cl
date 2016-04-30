@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Security.Cryptography;
 using System.Net.Sockets;
+using System.IO;
 
 namespace ProgettoClient
 {
@@ -34,7 +35,8 @@ namespace ProgettoClient
         private const string commCmdAckFromServer = "CMND_REC";
         private const string commInfoAckFromServer = "INFO_OK_";
         private const string commDataAckFromServer = "DATA_OK_";
-        
+        private const string commSndAgain = "SNDAGAIN";
+
 
         //todo: inserire commDBError
 
@@ -44,7 +46,7 @@ namespace ProgettoClient
         private byte[] hashPassword;
         private byte[] separator_r_n;
         private byte[] rootFolder;
-        
+
         private UTF8Encoding utf8;
 
         private System.Net.Sockets.TcpClient clientSocket = new System.Net.Sockets.TcpClient();
@@ -84,8 +86,8 @@ namespace ProgettoClient
         public void clearRootFolder()
         {
             sendToServer(commClrFolder_str);
-            if (strRecFromServer().Equals(commFolderOk)) 
-            { 
+            if (strRecFromServer().Equals(commFolderOk))
+            {
                 this.rootFolder = null;
             }
             else
@@ -111,7 +113,7 @@ namespace ProgettoClient
             this.hashPassword = mySha256.ComputeHash(utf8psw, 0, utf8psw.Length);
 
             sendToServer(commLogin_str);
-            
+
             //invio "[username]\r\n[sha-256_password]\r\n"
             byte[] userPassword = ConcatByte(this.user, separator_r_n);
             userPassword = ConcatByte(userPassword, this.hashPassword);
@@ -125,7 +127,7 @@ namespace ProgettoClient
                 case commloginerr:
                     //create_ac?
                     MyLogger.add("errore nel login\n");
-                    bool wantNewAcc = (bool) mainWindow.Dispatcher.Invoke(mainWindow.DelAskNewAccount);
+                    bool wantNewAcc = (bool)mainWindow.Dispatcher.Invoke(mainWindow.DelAskNewAccount);
                     if (wantNewAcc)
                     {
                         createAccount();
@@ -138,7 +140,7 @@ namespace ProgettoClient
                     }
                     break;
             }
-            
+
         }
 
         private void createAccount()
@@ -153,7 +155,7 @@ namespace ProgettoClient
                 clientSocket.Connect(serverIP, serverPort);
                 serverStream = clientSocket.GetStream();
             }
-            catch(SocketException)
+            catch (SocketException)
             {
                 MyLogger.add("Collegamento al server fallito");
                 throw;
@@ -215,11 +217,11 @@ namespace ProgettoClient
             MyLogger.add("disconnessione effettuata\n");
 
             logged = false;
-        
+
         }
 
 
-        internal void syncDeletedFile(RecordFile rf) 
+        internal void syncDeletedFile(RecordFile rf)
         {
             sendToServer(commDeleteFile);
             waitForAck(commCmdAckFromServer);
@@ -248,28 +250,52 @@ namespace ProgettoClient
         private void SendWholeFileToServer(RecordFile rf)
         {
             int tryes = 0;
-            while (tryes < 6) { 
+            while (tryes < 6)
+            {
                 //invio info del file
                 sendToServer(rf.toSendFormat());
-                waitForAck(commInfoAckFromServer); //TODO: da controllare che non esca un SNDAGAIN già qui.
+                //check ack
+                string resp = strRecFromServer();
+                if ( resp != commInfoAckFromServer)
+                {
+                    if (resp == commSndAgain)
+                    {
+                        tryes++;
+                        continue;
+                    }
+                    else
+                    {
+                        throw new AckErrorException();
+                    }
+                }
                 
                 //invio contenuto del file
                 sendFileContent(rf);
 
-                /////DA CONTROLLARE, INTERROTTO QUI
-                if (strRecFromServer() == "SNDAGAIN") {
-                    tryes++;
-                    continue;
+                //check ack
+                resp = strRecFromServer();
+                if (resp != commInfoAckFromServer)
+                {
+                    if (resp == commSndAgain)
+                    {
+                        tryes++;
+                        continue;
+                    }
+                    else
+                    {
+                        throw new AckErrorException();
+                    }
                 }
 
-                    
             }
-
         }
 
         private void sendFileContent(RecordFile f)
         {
-            throw new NotImplementedException();
+            byte[] file = File.ReadAllBytes(f.nameAndPath);
+            //byte[] fileBuffer = new byte[file.Length];
+            //serverStream.Write(file.ToArray(), 0, fileBuffer.GetLength(0));
+            serverStream.Write(file.ToArray(), 0, file.Length); //TODO:gestire casi di errore, tra cui impossibile aprire il file ecc...
         }
     }
 

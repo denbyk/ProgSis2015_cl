@@ -69,9 +69,27 @@ namespace ProgettoClient
         /// Nome completo file\r\n | Dimensione file (8 Byte) | Hash del file (16 Byte) | Timestamp (8 Byte)
         /// </summary>
         /// <returns></returns>
-        public string toSendFormat()
+        public string toSendFormat() //TODO: test it
         {
-            throw new NotImplementedException();
+            //TODO: little endian??? gli zeri li metto all'inizio o alla fine?
+            byte[] sizeByte = BitConverter.GetBytes(this.size);
+            byte[] sizeByteFormatted = new byte[8];
+            if (sizeByte.Length > sizeByteFormatted.Length) throw new Exception("file too big");
+            
+            //inserisco gli zeri prima di copiare il vettore
+            for(int i = sizeByteFormatted.Length; i >= sizeByte.Length; i--)
+            {
+                sizeByteFormatted[i] = 0;
+            }
+            //copio il resto del vettore
+            for (int i = sizeByte.Length; i >= 0; i--)
+            {
+                sizeByteFormatted[i] = sizeByte[i];
+            }
+
+
+            string description = this.nameAndPath + second_half;
+            return description;
         }
 
         public void GetObjectData(SerializationInfo info, StreamingContext context)

@@ -28,6 +28,7 @@ namespace ProgettoClient
         private const string commDeleteFile = "DEL_FILE";
         private const string commNewFile = "NEW_FILE";
         private const string commUpdFile = "UPD_FILE";
+        private const string commRecoverInfo = "FLD_STAT";
 
         private const string commFolderOk = "FOLDEROK";
         private const string commloggedok = "LOGGEDOK";
@@ -73,7 +74,7 @@ namespace ProgettoClient
             this.rootFolder = utf8.GetBytes(rootFolder);
             sendToServer(commSetFold_str);
             sendToServer(this.rootFolder);
-            if (strRecFromServer().Equals(commFolderOk)) //dovrebbe ricevere sempre FOLDEROK
+            if (strRecCommFromServer().Equals(commFolderOk)) //dovrebbe ricevere sempre FOLDEROK
             {
                 MyLogger.add("cartella selezionata correttamente.\n");
             }
@@ -86,7 +87,7 @@ namespace ProgettoClient
         public void clearRootFolder()
         {
             sendToServer(commClrFolder_str);
-            if (strRecFromServer().Equals(commFolderOk))
+            if (strRecCommFromServer().Equals(commFolderOk))
             {
                 this.rootFolder = null;
             }
@@ -162,12 +163,12 @@ namespace ProgettoClient
             }
         }
 
-        private string strRecFromServer() //TODO: idea: se qui controllo e se il server mi ha inviato DB_ERROR lanciassi una eccezione?
+        private string strRecCommFromServer() //TODO: idea: se qui controllo e se il server mi ha inviato DB_ERROR lanciassi una eccezione?
         {
-            return utf8.GetString(receiveFromServer());
+            return utf8.GetString(recCommFromServer());
         }
 
-        private byte[] receiveFromServer()
+        private byte[] recCommFromServer()
         {
             byte[] res = new byte[commLength];
             serverStream.Read(res, 0, res.Length); //TODO: e se la connessione si interrompe?
@@ -183,7 +184,7 @@ namespace ProgettoClient
 
         private void waitForAck(string ackExpected)
         {
-            string ack = strRecFromServer();
+            string ack = strRecCommFromServer();
             if (ack == ackExpected)
                 return;
             throw new AckErrorException();
@@ -247,6 +248,25 @@ namespace ProgettoClient
             SendWholeFileToServer(rf);
         }
 
+
+        public void askForRecoverInfo()
+        {
+            sendToServer(commRecoverInfo);
+            waitForAck(commCmdAckFromServer);
+            string stream = recRecoverInfoStream();
+            RecoverInfos ris = new RecoverInfos(stream);
+        }
+
+        private string recRecoverInfoStream()
+        {
+            bool endOfRecoverInfo = false;
+            while (!endOfRecoverInfo)
+            {
+                serverStream.ReadByte();
+                //TODO: da rifare il protocollo client server per questa funzione.
+            }
+        }
+
         private void SendWholeFileToServer(RecordFile rf)
         {
             int tryes = 0;
@@ -255,7 +275,7 @@ namespace ProgettoClient
                 //invio info del file
                 sendToServer(rf.toSendFormat());
                 //check ack
-                string resp = strRecFromServer();
+                string resp = strRecCommFromServer();
                 if ( resp != commInfoAckFromServer)
                 {
                     if (resp == commSndAgain)
@@ -273,7 +293,7 @@ namespace ProgettoClient
                 sendFileContent(rf);
 
                 //check ack
-                resp = strRecFromServer();
+                resp = strRecCommFromServer();
                 if (resp != commInfoAckFromServer)
                 {
                     if (resp == commSndAgain)
@@ -297,6 +317,7 @@ namespace ProgettoClient
             //serverStream.Write(file.ToArray(), 0, fileBuffer.GetLength(0));
             serverStream.Write(file.ToArray(), 0, file.Length); //TODO:gestire casi di errore, tra cui impossibile aprire il file ecc...
         }
+
     }
 
     class LoginFailedException : Exception

@@ -15,9 +15,10 @@ namespace ProgettoClient
     {
         public string nameAndPath;
         public int hash;   //forse gli dovrò cambiare il tipo
-        public long size;    //in byte
+        public long size;    //in byte. se -1 l'informazione non è disponibile
         public System.DateTime lastModified;
 
+        private static UTF8Encoding utf8;
 
         public RecordFile(string nameAndPath, int hash, long size, System.DateTime lastModified)
         {
@@ -30,7 +31,7 @@ namespace ProgettoClient
         public RecordFile(System.IO.FileInfo fi)
         {
             nameAndPath = fi.FullName;
-            hash = 1; //TO IMPLEMENT
+            hash = 1; //TODO: TO IMPLEMENT
             size = fi.Length;
             lastModified = fi.LastWriteTime;
         }
@@ -64,32 +65,61 @@ namespace ProgettoClient
             return base.GetHashCode();
         }
 
+
         /// <summary>
         /// restituisce il formato corretto del RecordFile per la spediziona sul socket
         /// Nome completo file\r\n | Dimensione file (8 Byte) | Hash del file (16 Byte) | Timestamp (8 Byte)
         /// </summary>
         /// <returns></returns>
-        public string toSendFormat() //TODO: test it
+        public byte[] toSendFormat() //TODO: test it
         {
-            //TODO: little endian??? gli zeri li metto all'inizio o alla fine?
-            byte[] sizeByte = BitConverter.GetBytes(this.size);
             byte[] sizeByteFormatted = new byte[8];
-            if (sizeByte.Length > sizeByteFormatted.Length) throw new Exception("file too big");
+            byte[] hashByteFormatted = new byte[8];
+            byte[] timeStampByteFormatted = new byte[8];
             
-            //inserisco gli zeri prima di copiare il vettore
-            for(int i = sizeByteFormatted.Length; i >= sizeByte.Length; i--)
-            {
-                sizeByteFormatted[i] = 0;
-            }
-            //copio il resto del vettore
-            for (int i = sizeByte.Length; i >= 0; i--)
-            {
-                sizeByteFormatted[i] = sizeByte[i];
-            }
+            //TODO: little endian??? gli zeri li metto all'inizio o alla fine?
+            CopyAndAddPadding(BitConverter.GetBytes(this.size), sizeByteFormatted);
+            CopyAndAddPadding(BitConverter.GetBytes(this.hash), hashByteFormatted);
+            CopyAndAddPadding(BitConverter.GetBytes(DateTimeToUnixTimestamp(this.lastModified)), timeStampByteFormatted);
+
+            //path + name + '\r\n'
+            byte[] nameByteFormatted = utf8.GetBytes((this.nameAndPath + Environment.NewLine).ToCharArray());
+
+            return nameByteFormatted.Concat(sizeByteFormatted).Concat(hashByteFormatted)
+                .Concat(timeStampByteFormatted).ToArray();
+        }
 
 
-            string description = this.nameAndPath + second_half;
-            return description;
+        //--------------preso da internet---------------------------------
+        private static double DateTimeToUnixTimestamp(DateTime dateTime)
+        {
+            return (TimeZoneInfo.ConvertTimeToUtc(dateTime) - 
+                new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
+        }
+
+        private static DateTime UnixTimestampToDateTime(double unixTimeStamp)
+        {
+            // Unix timestamp is seconds past epoch
+            System.DateTime dtDateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Utc);
+            dtDateTime = dtDateTime.AddSeconds(unixTimeStamp).ToLocalTime();
+            return dtDateTime;
+        }
+        //-----------------------------------------------------------------
+
+        private static void CopyAndAddPadding(byte[] initVett, byte[] finalVett)
+        {
+            int finalSize = finalVett.Length;
+            int initSize = initVett.Length;
+
+            if (initSize > finalSize) throw new Exception("info bigger than field");
+            for (int i = 0; i < initSize; i++)
+            {
+                finalVett[i] = initVett[i];
+            }
+            for (int i = initSize; i < finalSize; i++)
+            {
+                finalVett[i] = 0;
+            }
         }
 
         public void GetObjectData(SerializationInfo info, StreamingContext context)
@@ -112,10 +142,6 @@ namespace ProgettoClient
             this.lastModified = (DateTime) info.GetValue("lastModified", typeof(DateTime));
         }
 
-        //probabilmente non serve
-        //public RecordFile(string NameAndPath, Deleted notUsed){
-
-        //}
 
     
 

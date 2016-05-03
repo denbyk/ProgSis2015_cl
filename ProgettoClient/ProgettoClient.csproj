@@ -58,6 +58,7 @@
     </ApplicationDefinition>
     <Compile Include="AbortLogicThreadException.cs" />
     <Compile Include="RecordFile.cs" />
+    <Compile Include="RecoverInfos.cs" />
     <Compile Include="RecoverWindow.xaml.cs">
       <DependentUpon>RecoverWindow.xaml</DependentUpon>
     </Compile>

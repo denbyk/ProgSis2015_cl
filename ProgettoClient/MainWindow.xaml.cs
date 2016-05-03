@@ -77,6 +77,44 @@ namespace ProgettoClient
             }
         }
 
+        private bool _needToSync;
+        private bool needToSync
+        {
+            get
+            {
+                lock (this)
+                {
+                    return _needToSync;
+                }
+            }
+            set
+            {
+                lock (this)
+                {
+                    _needToSync = value;
+                }
+            }
+        }
+
+        private bool _needToRecover;
+        private bool needToRecover
+        {
+            get
+            {
+                lock (this)
+                {
+                    return _needToRecover;
+                }
+            }
+            set
+            {
+                lock (this)
+                {
+                    _needToRecover = value;
+                }
+            }
+        }
+
         private bool _checkForAbortSignaled;
         private bool CheckForAbortSignaled
         {
@@ -174,7 +212,6 @@ namespace ProgettoClient
             }
         }
 
-
         public MainWindow()
         {
             //init UI
@@ -247,7 +284,7 @@ namespace ProgettoClient
                 SyncTimer.Stop();
 
             SyncNowEventSignaled = true;
-
+            needToSync = true;
             SyncNowEvent.Set(); //permette al logicThread di procedere.
             
             //TODO: possibile stesso problema di autosync (timer scatta prima che sync finisca?
@@ -318,7 +355,7 @@ namespace ProgettoClient
         {
             MyLogger.add("AutoSync in corso\n");
             SyncNowEventSignaled = true;
-
+            needToSync = true;
             SyncNowEvent.Set(); //permette al logicThread di procedere.
 
             //TODO: possibile problema per timer troppo corto -> thread secondario non riesce a stare dietro a tutte le richieste?
@@ -330,7 +367,7 @@ namespace ProgettoClient
         private void AbortTimerHandler(object sender, EventArgs e)
         {
             MyLogger.add("DA CANCELLARE");
-            CheckForAbortSignaled = true; //caso di checkForAbort, non di SyncNowEvent
+            CheckForAbortSignaled = true; //caso di checkForAbort, non di SyncNowEvent. no needToSync
             SyncNowEvent.Set(); //permette al logicThread di procedere.
             AbortTimer.Start();
         }
@@ -358,12 +395,26 @@ namespace ProgettoClient
                         //selezione cartella
                         sm.setRootFolder(settings.getRootFolder());
 
+                        //voglio iniziare con una sync
+                        needToSync = true;
+
                         //ciclo finchè la connessione è attiva. si esce solo con eccezione o con chiusura thread logico.
                         while (true)
                         {
-                            //creo un DirMonitor che analizza la cartella
-                            d = new DirMonitor(settings.getRootFolder());
-                            SyncAll();
+                            //verifica se deve sincronizzare
+                            if (needToSync)
+                            {
+                                //creo un DirMonitor che analizza la cartella
+                                d = new DirMonitor(settings.getRootFolder());
+                                SyncAll();
+                                needToSync = false;
+                            }
+                            //verifica se deve richiedere dati per ripristino di file vecchi
+                            if (needToRecover)
+                            {
+                                sm.askForRecoverInfo();
+                                needToRecover = false;
+                            }
                             WaitForSyncTime();
                         }
                     }
@@ -514,7 +565,11 @@ namespace ProgettoClient
 
         private void buttRecover_Click(object sender, RoutedEventArgs e)
         {
-            recoverW = new RecoverWindow();
+            SyncNowEventSignaled = true;
+            needToRecover = true;
+            SyncNowEvent.Set(); //permette al logicThread di procedere.
+
+            recoverW = new RecoverWindow(/*...*/);
             recoverW.Owner = this;
             recoverW.ShowDialog();
         }

@@ -22,10 +22,22 @@ namespace ProgettoClient
         public RecoverWindow()
         {
             InitializeComponent();
+            List<string> lista = new List<string>();
+            lista.Add("ciao");
+            lista.Add("aaaaa");
+            lista.Add("zzzz");
+            recoverListView.ItemsSource = lista;
         }
+
+        private void button_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
+
+
     }
+
 }
 
-
-//vedere qui
-//http://www.wpf-tutorial.com/list-controls/itemscontrol/
+/// vedere qui
+///http://www.wpf-tutorial.com/listview-control/listview-with-gridview/

@@ -34,6 +34,9 @@ namespace ProgettoClient
         public delegate bool AskNewAccount_dt();
         public AskNewAccount_dt DelAskNewAccount;
 
+        internal delegate void ShowRecoverInfos_dt(RecoverInfos recInfo);
+        internal ShowRecoverInfos_dt DelShowRecoverInfos;
+
         private const string SETTINGS_FILE_PATH = "Settings.bin";
         //TODO change this
         private const string DEFAULT_FOLDERROOT_PATH = "C:\\DATI\\poli\\Programmazione di Sistema\\progetto_client\\cartella_test";
@@ -47,7 +50,7 @@ namespace ProgettoClient
 
         private TimeSpan checkForAbortTimeSpan = new TimeSpan(0, 0, 3);
 
-        //todo: not hardcode
+        //TODO: not hardcode
         private const string HARDCODED_SERVER_IP = "127.0.0.1";
 
         DirMonitor d;
@@ -153,6 +156,25 @@ namespace ProgettoClient
             }
         }
 
+        private RecoverInfos _recInfos;
+        internal RecoverInfos recInfos
+        {
+            get
+            {
+                lock (this)
+                {
+                    return _recInfos;
+                }
+            }
+            set
+            {
+                lock (this)
+                {
+                    _recInfos = value;
+                }
+            }
+        }
+
         private Settings settings;
         private SessionManager sm;
         private RecoverWindow recoverW;
@@ -212,6 +234,7 @@ namespace ProgettoClient
             }
         }
 
+
         public MainWindow()
         {
             //init UI
@@ -220,6 +243,7 @@ namespace ProgettoClient
             //init delegates
             DelWriteLog = writeInLog_RichTextBox;
             DelAskNewAccount = askNewAccount;
+            DelShowRecoverInfos = showRecoverInfos;
 
             //init accessory classes
             MyLogger.init(this);
@@ -247,8 +271,6 @@ namespace ProgettoClient
             logicThread.Start();
         }
 
-
-
         private bool askNewAccount()
         {
             // Configure the message box to be displayed
@@ -265,10 +287,8 @@ namespace ProgettoClient
             {
                 case MessageBoxResult.Yes:
                     return true;
-                    break;
                 case MessageBoxResult.No:
                     return false;
-                    break;
             }
 
             return false;
@@ -412,8 +432,12 @@ namespace ProgettoClient
                             //verifica se deve richiedere dati per ripristino di file vecchi
                             if (needToRecover)
                             {
-                                sm.askForRecoverInfo();
+                                recInfos = sm.askForRecoverInfo();
                                 needToRecover = false;
+                                if (recoverW.IsVisible)
+                                {
+                                    recoverW.Dispatcher.Invoke(DelShowRecoverInfos, recInfos);
+                                }
                             }
                             WaitForSyncTime();
                         }
@@ -573,6 +597,12 @@ namespace ProgettoClient
             recoverW.Owner = this;
             recoverW.ShowDialog();
         }
+
+        private void showRecoverInfos(RecoverInfos recInfo)
+        {
+            recoverW.showRecoverInfos(recInfo);
+        }
+
 
     }
 }   

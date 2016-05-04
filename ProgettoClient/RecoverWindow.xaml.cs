@@ -19,24 +19,53 @@ namespace ProgettoClient
     /// </summary>
     public partial class RecoverWindow : Window
     {
+        List<recoverListEntry> RecoverList;
+
         public RecoverWindow()
         {
             InitializeComponent();
-            List<string> lista = new List<string>();
-            lista.Add("ciao");
-            lista.Add("aaaaa");
-            lista.Add("zzzz");
-            recoverListView.ItemsSource = lista;
+            RecoverList = new List<recoverListEntry>();
+            RecoverList.Add( new recoverListEntry() { Name = "Caricamento in corso...", lastMod = ""});
+            recoverListView.ItemsSource = RecoverList;
+            this.buttRecover.IsEnabled = false;
         }
 
-        private void button_Click(object sender, RoutedEventArgs e)
+        private void buttRecover_click(object sender, RoutedEventArgs e)
         {
 
         }
 
+        internal void showRecoverInfos(RecoverInfos recInfos)
+        {
+            RecoverList.Clear();
 
+            //Recoverlist = recInfos.getRecoverList();
+
+            RecoverList.Add(new recoverListEntry() { Name = "uno", lastMod = "b" });
+            RecoverList.Add(new recoverListEntry() { Name = "due", lastMod = "a" });
+
+            recoverListView.Items.Refresh();
+            this.buttRecover.IsEnabled = true;
+        }
+
+
+
+        /// <summary>
+        /// TODO: DA CANCELLARE
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void DEBUGBUTT_Click(object sender, RoutedEventArgs e)
+        {
+            showRecoverInfos(new RecoverInfos(""));
+        }
     }
 
+    public class recoverListEntry
+    {
+        public string Name { get; set; }
+        public string lastMod{ get; set; }
+    }
 }
 
 /// vedere qui

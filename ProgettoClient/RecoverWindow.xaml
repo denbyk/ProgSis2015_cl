@@ -7,15 +7,16 @@
             <ColumnDefinition/>
             <ColumnDefinition Width="0*"/>
         </Grid.ColumnDefinitions>
-        <Button x:Name="Recover" Content="Recover files" HorizontalAlignment="Left" Margin="505,394,0,0" VerticalAlignment="Top" Width="75" Click="button_Click"/>
+        <Button x:Name="buttRecover" Content="Recover files" HorizontalAlignment="Left" Margin="505,394,0,0" VerticalAlignment="Top" Width="75" Click="buttRecover_click" IsEnabled="False"/>
         <ListView x:Name="recoverListView" HorizontalAlignment="Left" Height="389" VerticalAlignment="Top" Width="607">
             <ListView.View>
                 <GridView>
-                    <GridViewColumn Header="Name" Width="350" DisplayMemberBinding="{Binding Name}" />
-                    <GridViewColumn Header="Last Modify" Width="50" DisplayMemberBinding="{Binding Mail}" />
+                    <GridViewColumn Header="Name" Width="500" DisplayMemberBinding="{Binding Name}" />
+                    <GridViewColumn Header="Last Modify" Width="100" DisplayMemberBinding="{Binding lastMod}" />
                 </GridView>
             </ListView.View>
         </ListView>
+        <Button x:Name="DEBUGBUTT" Content="DEBUG" HorizontalAlignment="Left" Margin="266,414,0,0" VerticalAlignment="Top" Width="75" Click="DEBUGBUTT_Click"/>
 
     </Grid>
 </Window>

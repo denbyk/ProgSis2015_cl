@@ -55,7 +55,7 @@ namespace ProgettoClient
 
         private bool logged;
 
-        private Dictionary<byte[], commandsEnum> commands;
+        //private Dictionary<byte[], commandsEnum> commands;
 
         private MainWindow mainWindow;
 
@@ -249,12 +249,13 @@ namespace ProgettoClient
         }
 
 
-        public void askForRecoverInfo()
+        public RecoverInfos askForRecoverInfo()
         {
             sendToServer(commRecoverInfo);
             waitForAck(commCmdAckFromServer);
+
             string stream = recRecoverInfoStream();
-            RecoverInfos ris = new RecoverInfos(stream);
+            return new RecoverInfos(stream);
         }
 
         private string recRecoverInfoStream()
@@ -264,7 +265,9 @@ namespace ProgettoClient
             {
                 serverStream.ReadByte();
                 //TODO: da rifare il protocollo client server per questa funzione.
+                throw new NotImplementedException();
             }
+            return "";
         }
 
         private void SendWholeFileToServer(RecordFile rf)

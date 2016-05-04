@@ -8,19 +8,22 @@ namespace ProgettoClient
 {
     class RecoverInfos
     {
-        private struct RecoverRecord
-        {
-            RecordFile rf;
-            int backupVersion;
-        }
 
         HashSet<RecoverRecord> recInfos = new HashSet<RecoverRecord>();
-        private string stream;
         
         public RecoverInfos(string stream)
         {
-            
+            //fa parsing dello stream e popola recInfos di RecoverRecord eliminando duplicati
+            //throw new NotImplementedException();
         }
+
+
+    }
+
+    public struct RecoverRecord
+    {
+        RecordFile rf;
+        int backupVersion;
     }
 
 

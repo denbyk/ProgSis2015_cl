@@ -19,14 +19,14 @@ namespace ProgettoClient
     /// </summary>
     public partial class RecoverWindow : Window
     {
-        List<recoverListEntry> RecoverList;
+        List<recoverListEntry> RecoverEntryList;
 
         public RecoverWindow()
         {
             InitializeComponent();
-            RecoverList = new List<recoverListEntry>();
-            RecoverList.Add( new recoverListEntry() { Name = "Caricamento in corso...", lastMod = ""});
-            recoverListView.ItemsSource = RecoverList;
+            RecoverEntryList = new List<recoverListEntry>();
+            RecoverEntryList.Add( new recoverListEntry() { Name = "Caricamento in corso...", lastMod = ""});
+            recoverListView.ItemsSource = RecoverEntryList;
             this.buttRecover.IsEnabled = false;
         }
 
@@ -37,12 +37,13 @@ namespace ProgettoClient
 
         internal void showRecoverInfos(RecoverInfos recInfos)
         {
-            RecoverList.Clear();
+            RecoverEntryList.Clear();
 
-            //Recoverlist = recInfos.getRecoverList();
-
-            RecoverList.Add(new recoverListEntry() { Name = "uno", lastMod = "b" });
-            RecoverList.Add(new recoverListEntry() { Name = "due", lastMod = "a" });
+            List<RecoverRecord> rrlist = recInfos.getRecoverList();
+            foreach (RecoverRecord rec in rrlist)
+            {
+                RecoverEntryList.Add(new recoverListEntry(rec));
+            }
 
             recoverListView.Items.Refresh();
             this.buttRecover.IsEnabled = true;
@@ -57,7 +58,7 @@ namespace ProgettoClient
         /// <param name="e"></param>
         private void DEBUGBUTT_Click(object sender, RoutedEventArgs e)
         {
-            showRecoverInfos(new RecoverInfos(""));
+            showRecoverInfos(new RecoverInfos());
         }
     }
 
@@ -65,6 +66,19 @@ namespace ProgettoClient
     {
         public string Name { get; set; }
         public string lastMod{ get; set; }
+
+        //recoverListEntry contiene recoverRecord che contiene RecordFile.
+        public RecoverRecord rr;
+
+        //per creare la entry fittizia inizialmente
+        public recoverListEntry() { }
+
+        public recoverListEntry(RecoverRecord rRec)
+        {
+            this.rr = rRec;
+            this.Name = rRec.rf.nameAndPath;
+            this.lastMod = rRec.rf.lastModified.ToString();
+        }
     }
 }
 

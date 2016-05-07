@@ -11,7 +11,7 @@ namespace ProgettoClient
     /// record che racchiude nome+path, hash, size e lastModified del file
     /// </summary>
     [Serializable]
-    class RecordFile : ISerializable
+    public class RecordFile : ISerializable
     {
         public string nameAndPath;
         public int hash;   //forse gli dovrò cambiare il tipo
@@ -91,13 +91,13 @@ namespace ProgettoClient
 
 
         //--------------preso da internet---------------------------------
-        private static double DateTimeToUnixTimestamp(DateTime dateTime)
+        public static double DateTimeToUnixTimestamp(DateTime dateTime)
         {
             return (TimeZoneInfo.ConvertTimeToUtc(dateTime) - 
                 new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
         }
 
-        private static DateTime UnixTimestampToDateTime(double unixTimeStamp)
+        public static DateTime UnixTimestampToDateTime(double unixTimeStamp)
         {
             // Unix timestamp is seconds past epoch
             System.DateTime dtDateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Utc);

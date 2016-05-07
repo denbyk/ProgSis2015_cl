@@ -29,6 +29,7 @@ namespace ProgettoClient
         private const string commNewFile = "NEW_FILE";
         private const string commUpdFile = "UPD_FILE";
         private const string commRecoverInfo = "FLD_STAT";
+        private const string commRecoverFile = "FILE_SND";
 
         private const string commFolderOk = "FOLDEROK";
         private const string commloggedok = "LOGGEDOK";
@@ -253,21 +254,86 @@ namespace ProgettoClient
         {
             sendToServer(commRecoverInfo);
             waitForAck(commCmdAckFromServer);
+            RecoverInfos ris = new RecoverInfos();
+            try
+            {
+                //leggi numero di versioni
+                int numVers = Convert.ToInt32(readline());
 
-            string stream = recRecoverInfoStream();
-            return new RecoverInfos(stream);
+                int nFile;
+                //per ogni versione
+                for (int bv=0; bv<numVers; bv++)
+                {
+                    nFile = Convert.ToInt32(readline());
+                    //per ogni file
+                    for (int f = 0; f < nFile; f++)
+                    {
+                        // [Percorso completo]\r\n[Ultima modifica -> 8byte][Hash -> 32char]\r\n
+                        ris.addRawRecord(readline() + readline(), bv);
+                    }
+                }
+                
+            }
+            catch (Exception)
+            {
+                //TODO: gestire errori in readline, in addRawRecord ecc...
+                throw;
+            }
+            return ris;
         }
 
-        private string recRecoverInfoStream()
+        /// <summary>
+        /// non restituisce \r\n finale
+        /// </summary>
+        /// <returns></returns>
+        private string readline()
         {
-            bool endOfRecoverInfo = false;
-            while (!endOfRecoverInfo)
+            System.Text.StringBuilder sb = new System.Text.StringBuilder();
+            byte[] buf = new byte[1];
+            char c = 'a';
+            bool Rreceived = false;
+            string recString;
+            while (true)
             {
-                serverStream.ReadByte();
-                //TODO: da rifare il protocollo client server per questa funzione.
-                throw new NotImplementedException();
+                serverStream.Read(buf, 0, buf.Length);
+                c = Convert.ToChar(buf);
+                if (c == '\r')
+                {
+                    Rreceived = true;
+                    sb.Append(c);
+                    continue;
+                }
+                //se ho ricevuto \r\n:
+                if (c == '\n' && Rreceived)
+                {
+                    //elimina il \r gi# memorizzato in sb
+                    sb.Remove(sb.Length - 1, 1);
+                    break; 
+                }
             }
-            return "";
+            return sb.ToString();
+        }
+
+
+        private void sendFileContent(RecordFile f)
+        {
+            byte[] file = File.ReadAllBytes(f.nameAndPath);
+            //byte[] fileBuffer = new byte[file.Length];
+            //serverStream.Write(file.ToArray(), 0, fileBuffer.GetLength(0));
+            serverStream.Write(file.ToArray(), 0, file.Length); //TODO:gestire casi di errore, tra cui impossibile aprire il file ecc...
+        }
+
+        private void askForSingleFile(RecoverRecord rr)
+        {
+            sendToServer(commRecoverFile);
+            waitForAck(commCmdAckFromServer);
+
+            //"file.txt\r\n121"
+            sendToServer(rr.rf.nameAndPath + "\r\n" + rr.backupVersion.ToString());
+
+            RecFileContent(rr);
+
+            //TODO: eliminare da recoverRecords
         }
 
         private void SendWholeFileToServer(RecordFile rf)
@@ -279,7 +345,7 @@ namespace ProgettoClient
                 sendToServer(rf.toSendFormat());
                 //check ack
                 string resp = strRecCommFromServer();
-                if ( resp != commInfoAckFromServer)
+                if (resp != commInfoAckFromServer)
                 {
                     if (resp == commSndAgain)
                     {
@@ -291,7 +357,7 @@ namespace ProgettoClient
                         throw new AckErrorException();
                     }
                 }
-                
+
                 //invio contenuto del file
                 sendFileContent(rf);
 
@@ -313,14 +379,20 @@ namespace ProgettoClient
             }
         }
 
-        private void sendFileContent(RecordFile f)
+        private void RecFileContent(RecoverRecord rr)
         {
-            byte[] file = File.ReadAllBytes(f.nameAndPath);
-            //byte[] fileBuffer = new byte[file.Length];
-            //serverStream.Write(file.ToArray(), 0, fileBuffer.GetLength(0));
-            serverStream.Write(file.ToArray(), 0, file.Length); //TODO:gestire casi di errore, tra cui impossibile aprire il file ecc...
-        }
+            FileStream fout = File.Open(rr.rf.nameAndPath, FileMode.CreateNew);
+            //TODO: se il file esiste già? lo sovrascrivo?
 
+            var buffer = new byte[1024];
+            int bytesRead;
+            while ((bytesRead = serverStream.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                fout.Write(buffer, 0, bytesRead);
+            }
+
+            fout.Close();
+        }
     }
 
     class LoginFailedException : Exception

@@ -40,6 +40,7 @@ namespace ProgettoClient
             //affida a thread logico compito di recuperare il file.
             mainW.fileToRecover = rles.rr;
             mainW.needToAskForFileToRecover = true;
+            mainW.CycleNowEvent.Set();
         }
 
         internal void showRecoverInfos(RecoverInfos recInfos)

@@ -59,7 +59,7 @@ namespace ProgettoClient
         Thread logicThread;
 
         //event handles
-        EventWaitHandle SyncNowEvent;
+        public EventWaitHandle CycleNowEvent;
 
         private bool _syncNowEventSignaled;
         private bool SyncNowEventSignaled
@@ -291,7 +291,7 @@ namespace ProgettoClient
             LoadSettings();
 
 
-            this.SyncNowEvent = new EventWaitHandle(false, EventResetMode.ManualReset);
+            this.CycleNowEvent = new EventWaitHandle(false, EventResetMode.ManualReset);
             //this.CheckForAbortEvent = new EventWaitHandle(false, EventResetMode.ManualReset);
 
             SyncTimer = new System.Windows.Threading.DispatcherTimer();
@@ -344,7 +344,7 @@ namespace ProgettoClient
 
             SyncNowEventSignaled = true;
             needToSync = true;
-            SyncNowEvent.Set(); //permette al logicThread di procedere.
+            CycleNowEvent.Set(); //permette al logicThread di procedere.
             
             //TODO: possibile stesso problema di autosync (timer scatta prima che sync finisca?
             if(wasAutoSyncOn)
@@ -404,7 +404,7 @@ namespace ProgettoClient
 
             TerminateLogicThread = true;
             CheckForAbortSignaled = true;
-            SyncNowEvent.Set(); //permette al logicThread di procedere.
+            CycleNowEvent.Set(); //permette al logicThread di procedere.
 
             logicThread.Join();
         }
@@ -415,7 +415,7 @@ namespace ProgettoClient
             MyLogger.add("AutoSync in corso\n");
             SyncNowEventSignaled = true;
             needToSync = true;
-            SyncNowEvent.Set(); //permette al logicThread di procedere.
+            CycleNowEvent.Set(); //permette al logicThread di procedere.
 
             //TODO: possibile problema per timer troppo corto -> thread secondario non riesce a stare dietro a tutte le richieste?
             //possib soluzione: far riprendere il timer dopo che thread secondario ha finito il sync
@@ -427,7 +427,7 @@ namespace ProgettoClient
         {
             MyLogger.add("DA CANCELLARE");
             CheckForAbortSignaled = true; //caso di checkForAbort, non di SyncNowEvent. no needToSync
-            SyncNowEvent.Set(); //permette al logicThread di procedere.
+            CycleNowEvent.Set(); //permette al logicThread di procedere.
             AbortTimer.Start();
         }
 
@@ -559,7 +559,7 @@ namespace ProgettoClient
         {
             do
             {
-                SyncNowEvent.WaitOne();
+                CycleNowEvent.WaitOne();
                 if (CheckForAbortSignaled)
                 {
                     CheckForAbortSignaled = false;
@@ -638,7 +638,7 @@ namespace ProgettoClient
         {
             SyncNowEventSignaled = true;
             needToAskRecoverInfo = true;
-            SyncNowEvent.Set(); //permette al logicThread di procedere.
+            CycleNowEvent.Set(); //permette al logicThread di procedere.
 
             recoverW = new RecoverWindow(this);
             recoverW.Owner = this;

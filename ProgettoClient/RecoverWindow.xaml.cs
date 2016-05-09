@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -20,10 +21,12 @@ namespace ProgettoClient
     public partial class RecoverWindow : Window
     {
         List<recoverListEntry> RecoverEntryList;
+        MainWindow mainW;
 
-        public RecoverWindow()
+        public RecoverWindow(MainWindow mainW)
         {
             InitializeComponent();
+            this.mainW = mainW;
             RecoverEntryList = new List<recoverListEntry>();
             RecoverEntryList.Add( new recoverListEntry() { Name = "Caricamento in corso...", lastMod = ""});
             recoverListView.ItemsSource = RecoverEntryList;
@@ -32,7 +35,11 @@ namespace ProgettoClient
 
         private void buttRecover_click(object sender, RoutedEventArgs e)
         {
-
+            //ottieni elemento selezionato
+            recoverListEntry rles = (recoverListView.SelectedItem as recoverListEntry);
+            //affida a thread logico compito di recuperare il file.
+            mainW.fileToRecover = rles.rr;
+            mainW.needToAskForFileToRecover = true;
         }
 
         internal void showRecoverInfos(RecoverInfos recInfos)
@@ -58,7 +65,11 @@ namespace ProgettoClient
         /// <param name="e"></param>
         private void DEBUGBUTT_Click(object sender, RoutedEventArgs e)
         {
-            showRecoverInfos(new RecoverInfos());
+            var ris = new RecoverInfos();
+            ris.addRawRecord("C:\\primo.txt\r\n0000000900000000000000000000000000000001", 1);
+            ris.addRawRecord("C:\\secondo.txt\r\n0000000900000000000000000000000000000001", 1);
+            ris.addRawRecord("C:\\primo.txt\r\n0000000900000000000000000000000000000001", 2);
+            showRecoverInfos(ris);
         }
     }
 

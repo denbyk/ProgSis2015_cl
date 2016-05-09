@@ -100,7 +100,7 @@ namespace ProgettoClient
         }
 
         private bool _needToRecover;
-        private bool needToRecover
+        internal bool needToAskRecoverInfo
         {
             get
             {
@@ -175,6 +175,44 @@ namespace ProgettoClient
             }
         }
 
+        private bool _needToAskForFileToRecover;
+        internal bool needToAskForFileToRecover
+        {
+            get
+            {
+                lock (this)
+                {
+                    return _needToAskForFileToRecover;
+                }
+            }
+            set
+            {
+                lock (this)
+                {
+                    _needToAskForFileToRecover = value;
+                }
+            }
+        }
+
+        private  RecoverRecord _fileToRecover;
+        internal RecoverRecord fileToRecover
+        {
+            get
+            {
+                lock (this)
+                {
+                    return _fileToRecover;
+                }
+            }
+            set
+            {
+                lock (this)
+                {
+                    _fileToRecover = value;
+                }
+            }
+        }
+
         private Settings settings;
         private SessionManager sm;
         private RecoverWindow recoverW;
@@ -234,6 +272,7 @@ namespace ProgettoClient
             }
         }
 
+        
 
         public MainWindow()
         {
@@ -430,14 +469,22 @@ namespace ProgettoClient
                                 needToSync = false;
                             }
                             //verifica se deve richiedere dati per ripristino di file vecchi
-                            if (needToRecover)
+                            if (needToAskRecoverInfo)
                             {
                                 recInfos = sm.askForRecoverInfo();
-                                needToRecover = false;
+                                needToAskRecoverInfo = false;
                                 if (recoverW.IsVisible)
                                 {
                                     recoverW.Dispatcher.Invoke(DelShowRecoverInfos, recInfos);
                                 }
+                            }
+                            if (needToAskForFileToRecover)
+                            {
+                                needToAskForFileToRecover = false;
+                                //recupera recoverRecord
+
+                                //recupera file
+                                sm.askForSingleFile(fileToRecover);
                             }
                             WaitForSyncTime();
                         }
@@ -590,10 +637,10 @@ namespace ProgettoClient
         private void buttRecover_Click(object sender, RoutedEventArgs e)
         {
             SyncNowEventSignaled = true;
-            needToRecover = true;
+            needToAskRecoverInfo = true;
             SyncNowEvent.Set(); //permette al logicThread di procedere.
 
-            recoverW = new RecoverWindow(/*...*/);
+            recoverW = new RecoverWindow(this);
             recoverW.Owner = this;
             recoverW.ShowDialog();
         }

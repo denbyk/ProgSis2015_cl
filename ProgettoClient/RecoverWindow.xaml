@@ -8,7 +8,7 @@
             <ColumnDefinition Width="0*"/>
         </Grid.ColumnDefinitions>
         <Button x:Name="buttRecover" Content="Recover files" HorizontalAlignment="Left" Margin="505,394,0,0" VerticalAlignment="Top" Width="75" Click="buttRecover_click" IsEnabled="False"/>
-        <ListView x:Name="recoverListView" HorizontalAlignment="Left" Height="389" VerticalAlignment="Top" Width="607">
+        <ListView x:Name="recoverListView" HorizontalAlignment="Left" Height="389" VerticalAlignment="Top" Width="607" SelectionMode="Single">
             <ListView.View>
                 <GridView>
                     <GridViewColumn Header="Name" Width="500" DisplayMemberBinding="{Binding Name}" />

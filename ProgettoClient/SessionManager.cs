@@ -323,7 +323,7 @@ namespace ProgettoClient
             serverStream.Write(file.ToArray(), 0, file.Length); //TODO:gestire casi di errore, tra cui impossibile aprire il file ecc...
         }
 
-        private void askForSingleFile(RecoverRecord rr)
+        public void askForSingleFile(RecoverRecord rr)
         {
             sendToServer(commRecoverFile);
             waitForAck(commCmdAckFromServer);

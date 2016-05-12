@@ -37,10 +37,18 @@ namespace ProgettoClient
         {
             //ottieni elemento selezionato
             recoverListEntry rles = (recoverListView.SelectedItem as recoverListEntry);
-            //affida a thread logico compito di recuperare il file.
+            //affida a thread logico compito di recuperare il file 
+            //salvo recoverRecord nella proprietò thread-safe di mainWindow.
             mainW.fileToRecover = rles.rr;
+            //sblocco il logicThread.
             mainW.needToAskForFileToRecover = true;
             mainW.CycleNowEvent.Set();
+            //lo rimuovo dalla lista di RecoverEntry
+            RecoverEntryList.Remove(rles);
+            //rimuovo anche dall'oggetto RecoverInfos in mainW.
+            mainW.recInfos.removeRecoverRecord(rles.rr);
+            //refresh della listView
+            recoverListView.Items.Refresh();
         }
 
         internal void showRecoverInfos(RecoverInfos recInfos)
@@ -91,7 +99,10 @@ namespace ProgettoClient
             this.Name = rRec.rf.nameAndPath;
             this.lastMod = rRec.rf.lastModified.ToString();
         }
+
     }
+
+
 }
 
 /// vedere qui

@@ -20,7 +20,11 @@ namespace ProgettoClient
     {
         private const string IMAGE_FILE_PATH = "DirImage.bin";
 
+        //contiene immagine della ultima cartella sincronizzata nell forma <nome, RecordFile>.
+        //questa è l'immagine come vista dal server, non dal client. Se un file vecchio non è mai stato
+        //sincronizzato con il server apparirà cmq come nuovo.
         private Dictionary<string, RecordFile> dirImage;
+
         private System.IO.DirectoryInfo myDir;
 
         private BinaryFormatter formatter = new BinaryFormatter();
@@ -36,11 +40,10 @@ namespace ProgettoClient
         }
 
 
-        //??? nel distruttore o quando finisco un confronto??? o entrambi?
-        ~DirImageManager()
-        {
-            storeDirImage();
-        }
+        //~DirImageManager()
+        //{
+        //    storeDirImage();
+        //}
 
         /// <summary>
         /// Verify if the RecordFile passed is new/updated/old by comparing with the last calculated state of the directory.
@@ -71,20 +74,22 @@ namespace ProgettoClient
                 else
                     //è aggiornato
                     dirImage.Remove(rf.nameAndPath);
-                    dirImage.Add(rf.nameAndPath, rf);
+                    //dirImage.Add(rf.nameAndPath, rf); add è fatto solo tramite ConfirmSync (quando ho finito di sincronizzarlo con il server)
                     return FileStatus.Updated;
             }
             else
             {
                 //se non lo trovi è new
                 //aggiungilo a DirImage
-                dirImage.Add(rf.nameAndPath, rf);
+                //dirImage.Add(rf.nameAndPath, rf); add è fatto solo tramite ConfirmSync (quando ho finito di sincronizzarlo con il server)
                 return FileStatus.New;
             }
         }
 
-
-
+        internal void confirmSync(RecordFile rf)
+        {
+            dirImage.Add(rf.nameAndPath, rf);
+        }
 
         public HashSet<RecordFile> getDeleted() //?? posso tornare l'oggetto private??
         {
@@ -128,7 +133,7 @@ namespace ProgettoClient
 
         public void storeDirImage()
         {
-            //prima scrivo quella nuova, poi elimino quella vecchia dal disco.
+            //TODO:?prima scrivo quella nuova, poi elimino quella vecchia dal disco.
             //throw new NotImplementedException();
 
             try

@@ -70,7 +70,7 @@ namespace ProgettoClient
             separator_r_n = utf8.GetBytes("\r\n");
         }
 
-        public void setRootFolder(string rootFolder)
+        public bool setRootFolder(string rootFolder)
         {
             this.rootFolder = utf8.GetBytes(rootFolder);
             sendToServer(commSetFold_str);
@@ -78,6 +78,7 @@ namespace ProgettoClient
             if (strRecCommFromServer().Equals(commFolderOk)) //dovrebbe ricevere sempre FOLDEROK
             {
                 MyLogger.add("cartella selezionata correttamente.\n");
+                return true;
             }
             else
             {
@@ -98,6 +99,12 @@ namespace ProgettoClient
             }
         }
 
+        /// <summary>
+        /// restitrusce true se login ha avuto successo. se no false.
+        /// </summary>
+        /// <param name="user"></param>
+        /// <param name="password"></param>
+        /// <returns></returns>
         public void login(string user, string password)
         {
             if (logged)
@@ -175,7 +182,6 @@ namespace ProgettoClient
             serverStream.Read(res, 0, res.Length); //TODO: e se la connessione si interrompe?
             return res;
         }
-
 
         private void sendToServer(byte[] toSend)
         {
@@ -334,6 +340,7 @@ namespace ProgettoClient
             RecFileContent(rr);
 
             //TODO: eliminare da recoverRecords
+
         }
 
         private void SendWholeFileToServer(RecordFile rf)
@@ -396,13 +403,15 @@ namespace ProgettoClient
     }
 
     class LoginFailedException : Exception
-    {
-    }
+    { }
 
     class AckErrorException : Exception
     { }
 
     class UnknownServerResponseException : Exception
+    { }
+
+    class RootSetErrorException : Exception
     { }
 }
 

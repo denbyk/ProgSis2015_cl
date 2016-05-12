@@ -33,7 +33,6 @@ namespace ProgettoClient
         /// costruttore
         /// </summary>
         /// <param name="path">path della cartella da monitorare</param>
-        /// <param name="interval">periodo tra una scansione e l'altra. se impostato a null viene messo a 1 minuto</param> 
         public DirMonitor(string path)
         {
             myDir = new System.IO.DirectoryInfo(path);
@@ -49,9 +48,13 @@ namespace ProgettoClient
 
         public void scanDir()
         {
+            //costriamo le 4 categorie (4 hashset)
             WalkDirectoryTree(myDir, doOnFile);
             deletedFiles = dim.getDeleted();
-            dim.storeDirImage();
+
+            //dim.storeDirImage(); devo salvare SOLO le DirImage con i file effettivamente sincronizzati
+            
+            //TODO: FORSE questo if serviva solo per debug?
             if (deletedFiles.Count > 0) { 
                 MyLogger.add("deleted files:");
                 foreach (var item in deletedFiles)
@@ -60,6 +63,14 @@ namespace ProgettoClient
             //MyLogger.add("scanDir done");
             MyLogger.line();
         }
+
+        internal void confirmSync(RecordFile f)
+        {
+            dim.confirmSync(f);
+            dim.storeDirImage(); //così salvo ogni file sincronizzato
+        }
+
+
 
         //public void Pause()
         //{
@@ -72,7 +83,10 @@ namespace ProgettoClient
         //}
 
 
-    
+        /// <summary>
+        /// delegato che inserisce il file in questione nell'appropriato hashSet 
+        /// </summary>
+        /// <param name="fi"></param>
         private void checkFile(System.IO.FileInfo fi)
         {
             //MyLogger.add(fi.Name + "\n");

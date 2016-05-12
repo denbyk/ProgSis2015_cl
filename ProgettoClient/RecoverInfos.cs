@@ -23,7 +23,6 @@ namespace ProgettoClient
             recInfos = new HashSet<RecoverRecord>(mrrEqCmp);
         }
 
-
         public RecoverInfos()
         {
             this.init();
@@ -38,19 +37,30 @@ namespace ProgettoClient
 
         /// <summary>
         /// </summary>
-        /// <param name="line">formato: [Percorso completo]\r\n[Ultima modifica -> 8byte][Hash -> 32char]</param>
+        /// <param name="line">formato: [Percorso completo]\r\n[Ultima modifica -> 8byte][Hash -> 32byte]</param>
         public void addRawRecord(string line, int backupVersion)
         {
             //separo campi di line
             string[] stringSeparators = new string[] { "\r\n" };
             string[] part = line.Split(stringSeparators, StringSplitOptions.None);
 
+            //estraggo lastModify string
             double lmString = Convert.ToDouble(part[1].Substring(0, 8));
-            int hash = Convert.ToInt32(part[1].Substring(8, 32));
 
+            //TODO: fix this (size is not fixed)
+            char[] hashStr = part[1].Substring(8, 32).ToCharArray();
+            //byte[] hashByte = BitConverter.GetBytes(hashStr);
+
+            //TODO: ma qui hash è su 32 byte???? qual'è quello giusto?
+            //TODO replace null with hash
             addRecoverRecord(
-                new RecordFile(part[0], hash, -1, RecordFile.UnixTimestampToDateTime(lmString)),
+                new RecordFile(part[0], null, -1, MyConverter.UnixTimestampToDateTime(lmString)),
                 backupVersion);
+        }
+
+        public void removeRecoverRecord(RecoverRecord rr)
+        {
+            this.recInfos.Remove(rr);
         }
 
         // aggiunge i recordFile e la sua versione alle RecoverInfos eliminando eventuali
@@ -69,6 +79,8 @@ namespace ProgettoClient
             return recInfos.ToList<RecoverRecord>();
         }
     }
+
+
 
     public class RecoverRecord
     {
@@ -101,7 +113,7 @@ namespace ProgettoClient
         public int GetHashCode(RecoverRecord obj)
         {
             int hCode = obj.rf.nameAndPath.GetHashCode() ^
-                obj.rf.hash ^
+                obj.rf.hash.GetHashCode() ^
                 obj.rf.lastModified.GetHashCode();
             return hCode.GetHashCode();
         }

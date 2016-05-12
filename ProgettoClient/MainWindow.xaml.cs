@@ -305,9 +305,11 @@ namespace ProgettoClient
             //let's start
             MyLogger.add("si comincia\n");
 
-            //sgancio thread secondario
+            //imposto thread secondario
             logicThread = new Thread(logicThreadStart);
-            logicThread.Start();
+
+            //DEBUG: lo fa partire il tasto login in realtà
+            //logicThread.Start(); 
         }
 
         private bool askNewAccount()
@@ -434,7 +436,7 @@ namespace ProgettoClient
         private void logicThreadStart()
         {
             //siamo nel secondo thread, quello che non gestisce la interfaccia grafica.
-            try
+            try //catch errori non recuperabili per il thread
             {
                 //avvio tmer per verifica abort signals
                 AbortTimer.Start();
@@ -445,14 +447,17 @@ namespace ProgettoClient
 
                 while (!connected)
                 {
-                    try
+                    try //catch errori che richiedono riconnessione
                     {
                         //gestione del login
                         sm.login(settings.getUser(), settings.getPassw());
                         connected = true;
-
+                        
                         //selezione cartella
                         sm.setRootFolder(settings.getRootFolder());
+                        
+                        //TODO: login effettuato con successo, disattivo da interfaccia modifiche a login/passw e cartella
+
 
                         //voglio iniziare con una sync
                         needToSync = true;
@@ -499,11 +504,18 @@ namespace ProgettoClient
                     {
                         MyLogger.add("errore nel login. Correggere dati di accesso o creare nuovo utente.");
                         connected = false;
-                        WaitForSyncTime();
+                        break; //il thread logico si chiude.
+                    }
+                    catch (RootSetErrorException)
+                    {
+                        MyLogger.add("errore nella selezione della cartella. Correggere il path");
+                        connected = false;
+                        break; //il thread logico si chiude.
                     }
 
                 } //fine while(!connected)
-            }
+
+            } //fine try esterno
             catch (AbortLogicThreadException)
             {
                 MyLogger.add("logicThreadStart sta per uscire");
@@ -529,23 +541,27 @@ namespace ProgettoClient
         /// </summary>
         private void SyncAll()
         {
-            //TODO: implementare un meccanismo di abort tra un file e l'altro almeno.
+            //TODO:? implementare un meccanismo di abort tra un file e l'altro almeno.
             //TODO: gestire caduta di connessione durante upload di un file, non deve credere di averlo sincronizzato correttamente!!!!
+                //^ FATTO MA DA TESTARE
             HashSet<RecordFile> buffer;
             buffer = d.getUpdatedFiles();
             foreach (var f in buffer)
             {
                 sm.syncUpdatedFile(f);
+                d.confirmSync(f);
             }
             buffer = d.getNewFiles();
             foreach (var f in buffer)
             {
                 sm.syncNewFiles(f);
+                d.confirmSync(f);
             }
             buffer = d.getDeletedFiles();
             foreach (var f in buffer)
             {
                 sm.syncDeletedFile(f);
+                d.confirmSync(f);
             }
         }
 
@@ -650,7 +666,10 @@ namespace ProgettoClient
             recoverW.showRecoverInfos(recInfo);
         }
 
-
+        private void buttLogin_Click(object sender, RoutedEventArgs e)
+        {
+            logicThread.Start();
+        }
     }
 }   
 

@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Runtime.Serialization;
+using System.Security.Cryptography;
+using System.IO;
 
 namespace ProgettoClient
 {
@@ -14,13 +16,11 @@ namespace ProgettoClient
     public class RecordFile : ISerializable
     {
         public string nameAndPath;
-        public int hash;   //forse gli dovrò cambiare il tipo
+        public byte[] hash;   
         public long size;    //in byte. se -1 l'informazione non è disponibile
         public System.DateTime lastModified;
 
-        private static UTF8Encoding utf8;
-
-        public RecordFile(string nameAndPath, int hash, long size, System.DateTime lastModified)
+        public RecordFile(string nameAndPath, byte[] hash, long size, System.DateTime lastModified)
         {
             this.nameAndPath = nameAndPath;
             this.hash = hash;
@@ -31,9 +31,16 @@ namespace ProgettoClient
         public RecordFile(System.IO.FileInfo fi)
         {
             nameAndPath = fi.FullName;
-            hash = 1; //TODO: TO IMPLEMENT
+            hash = calcHash(); //TODO: TO IMPLEMENT
             size = fi.Length;
             lastModified = fi.LastWriteTime;
+        }
+
+        private byte[] calcHash()
+        {
+            var md5 = MD5.Create();
+            var stream = File.OpenRead(this.nameAndPath);
+            return md5.ComputeHash(stream); //TODO: lunghezza dell'hash non corretta!!!
         }
 
         public RecordFile(RecordFile rf)
@@ -68,43 +75,28 @@ namespace ProgettoClient
 
         /// <summary>
         /// restituisce il formato corretto del RecordFile per la spediziona sul socket
-        /// Nome completo file\r\n | Dimensione file (8 Byte) | Hash del file (16 Byte) | Timestamp (8 Byte)
+        /// Nome completo file\r\n | Dimensione file (8 Byte) | Hash del file (32 Byte) | Timestamp (8 Byte)
         /// </summary>
         /// <returns></returns>
         public byte[] toSendFormat() //TODO: test it
         {
-            byte[] sizeByteFormatted = new byte[8];
-            byte[] hashByteFormatted = new byte[8];
-            byte[] timeStampByteFormatted = new byte[8];
-            
+            byte[] sizeByteFormatted;
+            byte[] hashByteFormatted;
+            byte[] timeStampByteFormatted;
+
             //TODO: little endian??? gli zeri li metto all'inizio o alla fine?
-            CopyAndAddPadding(BitConverter.GetBytes(this.size), sizeByteFormatted);
-            CopyAndAddPadding(BitConverter.GetBytes(this.hash), hashByteFormatted);
-            CopyAndAddPadding(BitConverter.GetBytes(DateTimeToUnixTimestamp(this.lastModified)), timeStampByteFormatted);
+            sizeByteFormatted = MyConverter.toFixedLengthByteArray(this.size);
+            //datetime -> unix timestamp double -> byte array
+            timeStampByteFormatted = MyConverter.toFixedLengthByteArray(MyConverter.DateTimeToUnixTimestamp(this.lastModified));
+            hashByteFormatted = this.hash;
 
             //path + name + '\r\n'
-            byte[] nameByteFormatted = utf8.GetBytes((this.nameAndPath + Environment.NewLine).ToCharArray());
+            byte[] nameByteFormatted = MyConverter.UnicodeToByteArray(this.nameAndPath + Environment.NewLine);
 
             return nameByteFormatted.Concat(sizeByteFormatted).Concat(hashByteFormatted)
                 .Concat(timeStampByteFormatted).ToArray();
         }
 
-
-        //--------------preso da internet---------------------------------
-        public static double DateTimeToUnixTimestamp(DateTime dateTime)
-        {
-            return (TimeZoneInfo.ConvertTimeToUtc(dateTime) - 
-                new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
-        }
-
-        public static DateTime UnixTimestampToDateTime(double unixTimeStamp)
-        {
-            // Unix timestamp is seconds past epoch
-            System.DateTime dtDateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Utc);
-            dtDateTime = dtDateTime.AddSeconds(unixTimeStamp).ToLocalTime();
-            return dtDateTime;
-        }
-        //-----------------------------------------------------------------
 
         private static void CopyAndAddPadding(byte[] initVett, byte[] finalVett)
         {
@@ -137,7 +129,7 @@ namespace ProgettoClient
         {
             // Reset the property value using the GetValue method.
             this.nameAndPath = (string)info.GetValue("nameAndPath", typeof(string));
-            this.hash = (int)info.GetValue("hash", typeof(int));
+            this.hash = (byte[])info.GetValue("hash", typeof(byte[]));
             this.size = (long)info.GetValue("size", typeof(long));
             this.lastModified = (DateTime) info.GetValue("lastModified", typeof(DateTime));
         }
@@ -149,6 +141,12 @@ namespace ProgettoClient
         {
             return "RecordFile: " + nameAndPath + " " + hash + " " + size + " " + lastModified;
         }
+
+        public static int TODOTODELETE(int a)
+        {
+            return 2 * a;
+        }
+
 
     }
 

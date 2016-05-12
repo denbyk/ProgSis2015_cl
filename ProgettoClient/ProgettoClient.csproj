@@ -57,6 +57,7 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Compile Include="AbortLogicThreadException.cs" />
+    <Compile Include="MyConverter.cs" />
     <Compile Include="RecordFile.cs" />
     <Compile Include="RecoverInfos.cs" />
     <Compile Include="RecoverWindow.xaml.cs">

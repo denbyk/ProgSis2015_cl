@@ -1,9 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.31101.0
+# Visual Studio 14
+VisualStudioVersion = 14.0.25123.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProgettoClient", "ProgettoClient\ProgettoClient.csproj", "{ACF31E88-F90B-4097-B007-A614991A00F3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProgettoClientTests", "ProgettoClientTests\ProgettoClientTests.csproj", "{BC7C7CE0-F461-46DA-8A39-96CAD7850A2F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{ACF31E88-F90B-4097-B007-A614991A00F3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{ACF31E88-F90B-4097-B007-A614991A00F3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{ACF31E88-F90B-4097-B007-A614991A00F3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BC7C7CE0-F461-46DA-8A39-96CAD7850A2F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BC7C7CE0-F461-46DA-8A39-96CAD7850A2F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BC7C7CE0-F461-46DA-8A39-96CAD7850A2F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BC7C7CE0-F461-46DA-8A39-96CAD7850A2F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

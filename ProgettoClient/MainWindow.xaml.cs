@@ -37,6 +37,9 @@ namespace ProgettoClient
         internal delegate void ShowRecoverInfos_dt(RecoverInfos recInfo);
         internal ShowRecoverInfos_dt DelShowRecoverInfos;
 
+        internal delegate void DelSetInterfaceLoggedMode_dt(interfaceMode_t im);
+        internal DelSetInterfaceLoggedMode_dt DelSetInterfaceLoggedMode;
+
         private const string SETTINGS_FILE_PATH = "Settings.bin";
         //TODO change this
         private const string DEFAULT_FOLDERROOT_PATH = "C:\\DATI\\poli\\Programmazione di Sistema\\progetto_client\\cartella_test";
@@ -61,21 +64,21 @@ namespace ProgettoClient
         //event handles
         public EventWaitHandle CycleNowEvent;
 
-        private bool _syncNowEventSignaled;
-        private bool SyncNowEventSignaled
+        private bool _CycleNowEventSignaled;
+        private bool CycleNowEventSignaled
         {
             get
             {
                 lock (this)
                 {
-                    return _syncNowEventSignaled;
+                    return _CycleNowEventSignaled;
                 }
             }
             set
             {
                 lock (this)
                 {
-                    _syncNowEventSignaled = value;
+                    _CycleNowEventSignaled = value;
                 }
             }
         }
@@ -213,49 +216,49 @@ namespace ProgettoClient
             }
         }
 
-        private Settings settings;
-        private SessionManager sm;
-        private RecoverWindow recoverW;
-
-        ///i metodi apply* modificano l'interfaccia grafica per adattarla alle settings. 
-        ///non sono da usare per recepire le modifiche DA interfaccia.
-        private void applyScanInterval(double CycleTime)
+        internal enum interfaceMode_t {
+            logged,
+            notLogged
+        };
+        private interfaceMode_t _interfaceMode = interfaceMode_t.notLogged;
+        private interfaceMode_t interfaceMode
         {
-            if (CycleTime <= 0)
-                CycleTime = 1;
-            int intpart = (int)(Math.Floor(CycleTime));
-            ScanInterval = new TimeSpan(0, intpart, (int)(Math.Floor((CycleTime - intpart) * 60)));
-            this.textboxCycleTime.Text = CycleTime.ToString();
-        }
-
-        private void setAutoSync(bool autoSync)
-        {
-            if (autoSync)
+            get { lock (this) { return _interfaceMode; } }
+            set
             {
-                buttStartStopAutoSync.Content = AUTOSYNC_ON_TEXT;
-                SyncTimer.Start();
-                MyLogger.add("AutoSync started\n");
+                //solo il mainThread deve accedere qui.
+                if (value == interfaceMode_t.logged)
+                {
+                    textboxPathSyncDir.IsEnabled = false;
+                    textboxUtente.IsEnabled = false;
+                    textboxPassword.IsEnabled = false;
+                    buttSelSyncSir.IsEnabled = false;
+
+                    buttLogin.Content = "Logout";
+                    buttStartStopAutoSync.IsEnabled = true;
+                    buttManualStartStopSync.IsEnabled = true;
+                    buttRecover.IsEnabled = true;
+                    textboxCycleTime.IsEnabled = true;
+
+                    _interfaceMode = value;
+                }
+                else
+                {
+                    textboxPathSyncDir.IsEnabled = true;
+                    textboxUtente.IsEnabled = true;
+                    textboxPassword.IsEnabled = true;
+                    buttSelSyncSir.IsEnabled = true;
+
+                    buttLogin.Content = "Login";
+                    buttStartStopAutoSync.IsEnabled = false;
+                    buttManualStartStopSync.IsEnabled = false;
+                    buttRecover.IsEnabled = false;
+                    textboxCycleTime.IsEnabled = false;
+
+                    _interfaceMode = value;
+                }
             }
-            else
-            {
-                buttStartStopAutoSync.Content = AUTOSYNC_OFF_TEXT;
-                SyncTimer.Stop();
-                MyLogger.add("AutoSync stopped\n");
-            }
         }
-
-
-        private void applyUser(string User)
-        {
-            this.textboxUtente.Text = User;
-        }
-
-
-        private void applyPassw(string Password)
-        {
-            textboxPassword.Text = Password;
-        }
-
 
         /// <summary>
         ///modificandone il valore il timer si blocca e va fatto partire.
@@ -270,9 +273,11 @@ namespace ProgettoClient
                 SyncTimer.Interval = value;
                 //SyncTimer.Start();
             }
-        }
+        }    
 
-        
+        private Settings settings;
+        private SessionManager sm;
+        private RecoverWindow recoverW;
 
         public MainWindow()
         {
@@ -283,6 +288,7 @@ namespace ProgettoClient
             DelWriteLog = writeInLog_RichTextBox;
             DelAskNewAccount = askNewAccount;
             DelShowRecoverInfos = showRecoverInfos;
+            DelSetInterfaceLoggedMode = SetInterfaceLoggedMode;
 
             //init accessory classes
             MyLogger.init(this);
@@ -312,6 +318,48 @@ namespace ProgettoClient
             //logicThread.Start(); 
         }
 
+        private void SetInterfaceLoggedMode(interfaceMode_t im)
+        {
+            interfaceMode = im;
+        }
+
+        ///i metodi apply* modificano l'interfaccia grafica per adattarla alle settings. 
+        ///non sono da usare per recepire le modifiche DA interfaccia.
+        private void applyScanInterval(double CycleTime)
+        {
+            if (CycleTime <= 0)
+                CycleTime = 1;
+            int intpart = (int)(Math.Floor(CycleTime));
+            ScanInterval = new TimeSpan(0, intpart, (int)(Math.Floor((CycleTime - intpart) * 60)));
+            this.textboxCycleTime.Text = CycleTime.ToString();
+        }
+
+        private void setAutoSync(bool autoSync)
+        {
+            if (autoSync)
+            {
+                buttStartStopAutoSync.Content = AUTOSYNC_ON_TEXT;
+                SyncTimer.Start();
+                MyLogger.add("AutoSync started\n");
+            }
+            else
+            {
+                buttStartStopAutoSync.Content = AUTOSYNC_OFF_TEXT;
+                SyncTimer.Stop();
+                MyLogger.add("AutoSync stopped\n");
+            }
+        }
+        
+        private void applyUser(string User)
+        {
+            this.textboxUtente.Text = User;
+        }
+        
+        private void applyPassw(string Password)
+        {
+            textboxPassword.Text = Password;
+        }
+
         private bool askNewAccount()
         {
             // Configure the message box to be displayed
@@ -335,7 +383,6 @@ namespace ProgettoClient
             return false;
         }
 
-
         private void ManualSync()
         {
             MyLogger.add("Sync in corso...\n");
@@ -344,15 +391,28 @@ namespace ProgettoClient
             if(wasAutoSyncOn)
                 SyncTimer.Stop();
 
-            SyncNowEventSignaled = true;
+
             needToSync = true;
-            CycleNowEvent.Set(); //permette al logicThread di procedere.
+            MakeLogicThreadCycle(); //permette al logicThread di procedere.
             
             //TODO: possibile stesso problema di autosync (timer scatta prima che sync finisca?
             if(wasAutoSyncOn)
                 SyncTimer.Start();
         }
 
+        /// <summary>
+        /// //per chiudere il LogicThread in modo ordinato. TODO: non fa logout, chiude e basta.
+        /// </summary>
+        private void LogicThreadShutDown()
+        {
+            TerminateLogicThread = true;
+            CheckForAbortSignaled = true;
+            MakeLogicThreadCycle();
+            //attende chiusura del logicThread
+            logicThread.Join();
+            ////reimposta interfaccia grafica in modalità not logged
+            //interfaceMode = interfaceMode_t.notLogged; dovrebbe già farla il logicThread
+        }
 
         private void ApplySettings()
         {
@@ -362,8 +422,6 @@ namespace ProgettoClient
             this.applyUser(settings.getUser());
             this.applyPassw(settings.getPassw());
         }
-
-
 
         private void LoadSettings()
         {
@@ -383,7 +441,6 @@ namespace ProgettoClient
             }
         }
 
-
         private void SaveSettings()
         {
             BinaryFormatter formatter = new BinaryFormatter();
@@ -400,24 +457,20 @@ namespace ProgettoClient
             }
         }
 
-        private void LogicThreadShutDown()
+        /// <summary>
+        /// permette al logic thread di procedere
+        /// </summary>
+        private void MakeLogicThreadCycle()
         {
-            //per chiudere il LogicThread in modo ordinato
-
-            TerminateLogicThread = true;
-            CheckForAbortSignaled = true;
+            CycleNowEventSignaled = true;
             CycleNowEvent.Set(); //permette al logicThread di procedere.
-
-            logicThread.Join();
         }
-
 
         private void SyncTimerHandler(object sender, EventArgs e)
         {
             MyLogger.add("AutoSync in corso\n");
-            SyncNowEventSignaled = true;
             needToSync = true;
-            CycleNowEvent.Set(); //permette al logicThread di procedere.
+            MakeLogicThreadCycle(); //permette al logicThread di procedere.
 
             //TODO: possibile problema per timer troppo corto -> thread secondario non riesce a stare dietro a tutte le richieste?
             //possib soluzione: far riprendere il timer dopo che thread secondario ha finito il sync
@@ -433,159 +486,7 @@ namespace ProgettoClient
             AbortTimer.Start();
         }
 
-        private void logicThreadStart()
-        {
-            //siamo nel secondo thread, quello che non gestisce la interfaccia grafica.
-            try //catch errori non recuperabili per il thread
-            {
-                //avvio tmer per verifica abort signals
-                AbortTimer.Start();
-
-                //inizializzo oggetto per connessione con server
-                sm = new SessionManager(HARDCODED_SERVER_IP, HARDCODED_SERVER_PORT, this);
-                bool connected = false;
-
-                while (!connected)
-                {
-                    try //catch errori che richiedono riconnessione
-                    {
-                        //gestione del login
-                        sm.login(settings.getUser(), settings.getPassw());
-                        connected = true;
-                        
-                        //selezione cartella
-                        sm.setRootFolder(settings.getRootFolder());
-                        
-                        //TODO: login effettuato con successo, disattivo da interfaccia modifiche a login/passw e cartella
-
-
-                        //voglio iniziare con una sync
-                        needToSync = true;
-
-                        //ciclo finchè la connessione è attiva. si esce solo con eccezione o con chiusura thread logico.
-                        while (true)
-                        {
-                            //verifica se deve sincronizzare
-                            if (needToSync)
-                            {
-                                //creo un DirMonitor che analizza la cartella
-                                d = new DirMonitor(settings.getRootFolder());
-                                SyncAll();
-                                needToSync = false;
-                            }
-                            //verifica se deve richiedere dati per ripristino di file vecchi
-                            if (needToAskRecoverInfo)
-                            {
-                                recInfos = sm.askForRecoverInfo();
-                                needToAskRecoverInfo = false;
-                                if (recoverW.IsVisible)
-                                {
-                                    recoverW.Dispatcher.Invoke(DelShowRecoverInfos, recInfos);
-                                }
-                            }
-                            if (needToAskForFileToRecover)
-                            {
-                                needToAskForFileToRecover = false;
-                                //recupera recoverRecord
-
-                                //recupera file
-                                sm.askForSingleFile(fileToRecover);
-                            }
-                            WaitForSyncTime();
-                        }
-                    }
-                    catch (SocketException)
-                    {
-                        MyLogger.add("impossibile connettersi. Nuovo tentativo alla prossima sincronizzazione.");
-                        connected = false; //ripete login e selezione cartella dopo attesa
-                        WaitForSyncTime();
-                    }
-                    catch (LoginFailedException)
-                    {
-                        MyLogger.add("errore nel login. Correggere dati di accesso o creare nuovo utente.");
-                        connected = false;
-                        break; //il thread logico si chiude.
-                    }
-                    catch (RootSetErrorException)
-                    {
-                        MyLogger.add("errore nella selezione della cartella. Correggere il path");
-                        connected = false;
-                        break; //il thread logico si chiude.
-                    }
-
-                } //fine while(!connected)
-
-            } //fine try esterno
-            catch (AbortLogicThreadException)
-            {
-                MyLogger.add("logicThreadStart sta per uscire");
-                ///TODO ??? 
-                ///il logic thread si sta chiudendo (magari perchè utente ha chiuso il programma,
-                ///eventualmente chiudere connessioni varie.
-                sm.logout(); //è sufficiente?
-                return; //fine thread logico
-            }
-            catch (Exception e)
-            {
-                MyLogger.line();
-                MyLogger.add(e.Message);
-                MyLogger.line();
-                throw;
-            }
-
-        }
-
-
-        /// <summary>
-        /// estraggo i vari record dei file e li sincronizzo con il server
-        /// </summary>
-        private void SyncAll()
-        {
-            //TODO:? implementare un meccanismo di abort tra un file e l'altro almeno.
-            //TODO: gestire caduta di connessione durante upload di un file, non deve credere di averlo sincronizzato correttamente!!!!
-                //^ FATTO MA DA TESTARE
-            HashSet<RecordFile> buffer;
-            buffer = d.getUpdatedFiles();
-            foreach (var f in buffer)
-            {
-                sm.syncUpdatedFile(f);
-                d.confirmSync(f);
-            }
-            buffer = d.getNewFiles();
-            foreach (var f in buffer)
-            {
-                sm.syncNewFiles(f);
-                d.confirmSync(f);
-            }
-            buffer = d.getDeletedFiles();
-            foreach (var f in buffer)
-            {
-                sm.syncDeletedFile(f);
-                d.confirmSync(f);
-            }
-        }
-
-
-        /// <summary>
-        /// aspetto evento timer AutoSync o sincronizzazione manuale.
-        /// lancia eccezione se è stato settato generato un abort (check interno ogni checkForAbortTimeSpan).
-        /// </summary>
-        /// <exception cref="AbortLogicThreadException"></exception>
-        private void WaitForSyncTime()
-        {
-            do
-            {
-                CycleNowEvent.WaitOne();
-                if (CheckForAbortSignaled)
-                {
-                    CheckForAbortSignaled = false;
-                    if (TerminateLogicThread)
-                        throw new AbortLogicThreadException();
-                }
-            } while (!SyncNowEventSignaled); ////evita spurie di syncNow
-            SyncNowEventSignaled = false;
-        }
-
+        /*---event handlers & interface modifier------------*/
 
         private void Button_Click(object sender, RoutedEventArgs e)
         {
@@ -652,9 +553,8 @@ namespace ProgettoClient
 
         private void buttRecover_Click(object sender, RoutedEventArgs e)
         {
-            SyncNowEventSignaled = true;
             needToAskRecoverInfo = true;
-            CycleNowEvent.Set(); //permette al logicThread di procedere.
+            MakeLogicThreadCycle();
 
             recoverW = new RecoverWindow(this);
             recoverW.Owner = this;
@@ -666,10 +566,176 @@ namespace ProgettoClient
             recoverW.showRecoverInfos(recInfo);
         }
 
-        private void buttLogin_Click(object sender, RoutedEventArgs e)
+        private void buttLoginLogout_Click(object sender, RoutedEventArgs e)
         {
-            logicThread.Start();
+            if (interfaceMode == interfaceMode_t.notLogged)
+            {
+                logicThread.Start();
+            }
+            else
+            {
+                LogicThreadShutDown();
+            }
         }
+
+        /*-------------------------------------------------------------------------------------------------------------*/
+        /*---logic Tread methods---------------------------------------------------------------------------------------*/
+        /*-------------------------------------------------------------------------------------------------------------*/
+
+        //siamo nel secondo thread, quello che non gestisce la interfaccia grafica.
+        private void logicThreadStart()
+        {
+            try //catch errori non recuperabili per il thread
+            {
+                //avvio tmer per verifica abort signals
+                AbortTimer.Start();
+
+                //inizializzo oggetto per connessione con server
+                sm = new SessionManager(HARDCODED_SERVER_IP, HARDCODED_SERVER_PORT, this);
+                bool connected = false;
+
+                while (!connected)
+                {
+                    try //catch errori che richiedono riconnessione
+                    {
+                        //gestione del login
+                        sm.login(settings.getUser(), settings.getPassw());
+                        connected = true;
+                        
+                        //selezione cartella
+                        sm.setRootFolder(settings.getRootFolder());
+
+                        //attiva modalità logged nella UI
+                        this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.logged);
+
+                        //voglio iniziare con una sync
+                        needToSync = true;
+
+                        //ciclo finchè la connessione è attiva. si esce solo con eccezione o con chiusura thread logico.
+                        while (true)
+                        {
+                            //verifica se deve sincronizzare
+                            if (needToSync)
+                            {
+                                //creo un DirMonitor che analizza la cartella
+                                d = new DirMonitor(settings.getRootFolder());
+                                SyncAll();
+                                needToSync = false;
+                            }
+                            //verifica se deve richiedere dati per ripristino di file vecchi
+                            if (needToAskRecoverInfo)
+                            {
+                                recInfos = sm.askForRecoverInfo();
+                                needToAskRecoverInfo = false;
+                                if (recoverW.IsVisible)
+                                {
+                                    recoverW.Dispatcher.Invoke(DelShowRecoverInfos, recInfos);
+                                }
+                            }
+                            //recupera recoverRecord
+                            if (needToAskForFileToRecover)
+                            {
+                                needToAskForFileToRecover = false;
+
+                                //recupera file
+                                sm.askForSingleFile(fileToRecover);
+                            }
+                            WaitForSyncTime();
+                        }
+                    }
+                    catch (SocketException)
+                    {
+                        MyLogger.add("impossibile connettersi. Nuovo tentativo alla prossima sincronizzazione.");
+                        connected = false; //ripete login e selezione cartella dopo attesa
+                        WaitForSyncTime();
+                    }
+                    catch (LoginFailedException)
+                    {
+                        MyLogger.add("errore nel login. Correggere dati di accesso o creare nuovo utente.");
+                        connected = false;
+                        //consento a utente di modificare dati di accesso
+                        this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.notLogged);
+                        break; //il thread logico si chiude.
+                    }
+                    catch (RootSetErrorException)
+                    {
+                        MyLogger.add("errore nella selezione della cartella. Correggere il path");
+                        connected = false;
+                        //consento a utente di modificare dati di accesso
+                        this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.notLogged);
+                        break; //il thread logico si chiude.
+                    }
+                } //fine while(!connected)
+            } //fine try esterno
+            catch (AbortLogicThreadException)
+            {
+                MyLogger.add("logicThreadStart sta per uscire");
+                ///TODO ??? 
+                ///il logic thread si sta chiudendo (magari perchè utente ha chiuso il programma,
+                ///eventualmente chiudere connessioni varie.
+                sm.logout(); //è sufficiente?
+                //consento a utente di modificare dati di accesso
+                this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.notLogged);
+                return; //fine thread logico
+            }
+            catch (Exception e) //eccezione critica.
+            {
+                MyLogger.line();
+                MyLogger.add(e.Message);
+                MyLogger.line();
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// aspetto evento timer AutoSync o sincronizzazione manuale.
+        /// lancia eccezione se è stato settato generato un abort (check interno ogni checkForAbortTimeSpan).
+        /// </summary>
+        /// <exception cref="AbortLogicThreadException"></exception>
+        private void WaitForSyncTime()
+        {
+            do
+            {
+                CycleNowEvent.WaitOne();
+                if (CheckForAbortSignaled)
+                {
+                    CheckForAbortSignaled = false;
+                    if (TerminateLogicThread)
+                        throw new AbortLogicThreadException();
+                }
+            } while (!CycleNowEventSignaled); ////evita spurie di syncNow
+            CycleNowEventSignaled = false;
+        }
+        
+        /// <summary>
+        /// estraggo i vari record dei file e li sincronizzo con il server
+        /// </summary>
+        private void SyncAll()
+        {
+            //TODO:? implementare un meccanismo di abort tra un file e l'altro almeno.
+            //TODO: gestire caduta di connessione durante upload di un file, non deve credere di averlo sincronizzato correttamente!!!!
+            //^ FATTO MA DA TESTARE
+            HashSet<RecordFile> buffer;
+            buffer = d.getUpdatedFiles();
+            foreach (var f in buffer)
+            {
+                sm.syncUpdatedFile(f);
+                d.confirmSync(f);
+            }
+            buffer = d.getNewFiles();
+            foreach (var f in buffer)
+            {
+                sm.syncNewFiles(f);
+                d.confirmSync(f);
+            }
+            buffer = d.getDeletedFiles();
+            foreach (var f in buffer)
+            {
+                sm.syncDeletedFile(f);
+                d.confirmSync(f);
+            }
+        }
+
     }
 }   
 

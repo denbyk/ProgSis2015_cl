@@ -27,7 +27,7 @@
         <TextBlock HorizontalAlignment="Left" Margin="150,22,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="54" Height="17"><Run Text="Password"/><LineBreak/><Run/></TextBlock>
         <TextBox x:Name="textboxUtente" HorizontalAlignment="Left" Height="19" Margin="11,39,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="120" TextAlignment="Center" LostFocus="textboxCycleTime_LostFocus" KeyDown="textboxCycleTime_KeyDown"/>
         <TextBox x:Name="textboxPassword" HorizontalAlignment="Left" Height="19" Margin="150,39,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="120" TextAlignment="Center" LostFocus="textboxCycleTime_LostFocus" KeyDown="textboxCycleTime_KeyDown"/>
-        <Button x:Name="buttLogin" Content="Login" HorizontalAlignment="Left" Margin="275,39,0,0" VerticalAlignment="Top" Width="50" Height="19" Click="buttLogin_Click"/>
+        <Button x:Name="buttLogin" Content="Login" HorizontalAlignment="Left" Margin="275,39,0,0" VerticalAlignment="Top" Width="50" Height="19" Click="buttLoginLogout_Click"/>
 
     </Grid>
 </Window>

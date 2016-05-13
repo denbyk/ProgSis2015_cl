@@ -64,6 +64,8 @@ namespace ProgettoClient
             MyLogger.line();
         }
 
+
+        //TODO: questo sistema funziona con i file RIMOSSI? Sì, DOVREBBE. da testare.
         internal void confirmSync(RecordFile f)
         {
             dim.confirmSync(f);

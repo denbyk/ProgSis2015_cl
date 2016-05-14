@@ -9,7 +9,6 @@ namespace ProgettoClient
 {
     public static class MyConverter
     {
-        /// Nome completo file\r\n | Dimensione file (8 Byte) | Hash del file (16 Byte) | Timestamp (8 Byte)
         private const int sizeLength = 8;
         private const int hashLength = 16;
         private const int timestampLength = 8;
@@ -17,35 +16,33 @@ namespace ProgettoClient
 
         private static Encoding utf8 = Encoding.UTF8;
 
-        public static byte[] toFixedLengthByteArray(long x)
+        //public static string toExadecimal(long toConvert, int numDigits)
+        //{
+        //    return toConvert.ToString("X" + numDigits.ToString());
+        //}
+
+        /// <summary>
+        /// estrae nome e directory dal path
+        /// </summary>
+        /// <param name="path"></param>
+        /// <returns>ret[0] = dir (with final //); ret[1] = name</returns>
+        public static string[] extractNameAndFolder (string path)
         {
-            byte[] buf = BitConverter.GetBytes(x);
-            if (buf.Length != sizeLength)
-                throw new ConvertingException();
-            return buf;
+            string[] tot = path.Split(new string[] { "\\" }, StringSplitOptions.RemoveEmptyEntries);
+            string[] ret = new string[2];
+            foreach (var s in tot.Take<string>(tot.Length - 1))
+                ret[0] += s + "\\";
+            ret[1] = tot.Last<string>();
+            return ret;
         }
 
-        public static byte[] toFixedLengthByteArray(double x)
+        public static long DateTimeToUnixTimestamp(DateTime dateTime)
         {
-            byte[] buf = BitConverter.GetBytes(x);
-            if (buf.Length != timestampLength)
-                throw new ConvertingException();
-            return buf;
+            return Convert.ToInt64((TimeZoneInfo.ConvertTimeToUtc(dateTime) -
+                new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds);
         }
 
-        public static byte[] UnicodeToByteArray(string x)
-        {
-            return utf8.GetBytes(x.ToCharArray());
-        }
-
-
-        public static double DateTimeToUnixTimestamp(DateTime dateTime)
-        {
-            return (TimeZoneInfo.ConvertTimeToUtc(dateTime) -
-                new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
-        }
-
-        public static DateTime UnixTimestampToDateTime(double unixTimeStamp)
+        public static DateTime UnixTimestampToDateTime(long unixTimeStamp)
         {
             // Unix timestamp is seconds past epoch
             System.DateTime dtDateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Utc);
@@ -54,12 +51,12 @@ namespace ProgettoClient
         }
 
 
-        public static byte[] stringToFixedLengthByteArray(string str)
-        {
-            if (str.Length != hashLength) throw new ConvertingException();
-            //TODO: verificare Default!!!!
-            return Encoding.Default.GetBytes(str);
-        }
+        //public static byte[] stringToFixedLengthByteArray(string str)
+        //{
+        //    if (str.Length != hashLength) throw new ConvertingException();
+        //    //TODO: verificare Default!!!!
+        //    return Encoding.Default.GetBytes(str);
+        //}
 
     }
 

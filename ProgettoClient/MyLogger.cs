@@ -19,23 +19,26 @@ namespace ProgettoClient
         }
 
 
-        public static void add(string message)
+        public static void print(string message)
         {
             Trace.WriteLine(message);
             Trace.Flush();
             mainWindow.Dispatcher.BeginInvoke(mainWindow.DelWriteLog, message);
         }
 
-        public static void add(Object o)
+        public static void print(Object o)
         {
-            MyLogger.add(o.ToString());
+            MyLogger.print(o.ToString());
         }
 
         public static void line()
         {
-            MyLogger.add("-----------------------------------------------\n");
+            MyLogger.print("-----------------------------------------------\n");
         }
 
-
+        internal static void debug(string v)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

@@ -16,13 +16,14 @@ namespace ProgettoClient
     public class RecordFile : ISerializable
     {
         public string nameAndPath;
-        public byte[] hash;   
+        public string hash; //32 caratteri esadecimali
         public long size;    //in byte. se -1 l'informazione non è disponibile
         public System.DateTime lastModified;
 
-        public RecordFile(string nameAndPath, byte[] hash, long size, System.DateTime lastModified)
+        public RecordFile(string nameAndPath, string hash, long size, System.DateTime lastModified)
         {
             this.nameAndPath = nameAndPath;
+            if (hash.Length != 32) throw new ArgumentException("hash.length != 32!");
             this.hash = hash;
             this.size = size;
             this.lastModified = lastModified;
@@ -31,16 +32,18 @@ namespace ProgettoClient
         public RecordFile(System.IO.FileInfo fi)
         {
             nameAndPath = fi.FullName;
-            hash = calcHash(); //TODO: TO IMPLEMENT
+            hash = calcHash();
             size = fi.Length;
             lastModified = fi.LastWriteTime;
         }
 
-        private byte[] calcHash()
+        private string calcHash()
         {
             var md5 = MD5.Create();
             var stream = File.OpenRead(this.nameAndPath);
-            return md5.ComputeHash(stream); //TODO: lunghezza dell'hash non corretta!!!
+            byte[] x = md5.ComputeHash(stream); //char di 16 caratteri.
+            string hex = BitConverter.ToString(x).Replace("-", string.Empty); //rappresentazione in esadecimale -> 32 caratteri.
+            return hex;
         }
 
         public RecordFile(RecordFile rf)
@@ -75,49 +78,21 @@ namespace ProgettoClient
 
         /// <summary>
         /// restituisce il formato corretto del RecordFile per la spediziona sul socket
-        /// Nome completo file\r\n | Dimensione file (8 Byte) | Hash del file (32 Byte) | Timestamp (8 Byte)
+        ///[Nome completo file]\r\n[Dimensione file (12 char)][Hash del file (32 char)][Timestamp (16 char)]\r\n
         /// </summary>
         /// <returns></returns>
-        public byte[] toSendFormat() //TODO: test it
-        {
-            byte[] sizeByteFormatted;
-            byte[] hashByteFormatted;
-            byte[] timeStampByteFormatted;
-
-            //TODO: little endian??? gli zeri li metto all'inizio o alla fine?
-            sizeByteFormatted = MyConverter.toFixedLengthByteArray(this.size);
-            //datetime -> unix timestamp double -> byte array
-            timeStampByteFormatted = MyConverter.toFixedLengthByteArray(MyConverter.DateTimeToUnixTimestamp(this.lastModified));
-            hashByteFormatted = this.hash;
-
-            //path + name + '\r\n'
-            byte[] nameByteFormatted = MyConverter.UnicodeToByteArray(this.nameAndPath + Environment.NewLine);
-
-            return nameByteFormatted.Concat(sizeByteFormatted).Concat(hashByteFormatted)
-                .Concat(timeStampByteFormatted).ToArray();
-        }
-
-
-        private static void CopyAndAddPadding(byte[] initVett, byte[] finalVett)
-        {
-            int finalSize = finalVett.Length;
-            int initSize = initVett.Length;
-
-            if (initSize > finalSize) throw new Exception("info bigger than field");
-            for (int i = 0; i < initSize; i++)
-            {
-                finalVett[i] = initVett[i];
-            }
-            for (int i = initSize; i < finalSize; i++)
-            {
-                finalVett[i] = 0;
-            }
+        public string toSendFormat()
+        {   
+            return this.nameAndPath + "\r\n" + 
+                size.ToString("X12") + 
+                hash + 
+                MyConverter.DateTimeToUnixTimestamp(lastModified).ToString("X16") + "\r\n";
         }
 
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             info.AddValue("nameAndPath", nameAndPath, typeof(string));
-            info.AddValue("hash", hash);
+            info.AddValue("hash", hash, typeof(string));
             info.AddValue("size", size);
             info.AddValue("lastModified", lastModified, typeof(DateTime));
         }
@@ -129,24 +104,15 @@ namespace ProgettoClient
         {
             // Reset the property value using the GetValue method.
             this.nameAndPath = (string)info.GetValue("nameAndPath", typeof(string));
-            this.hash = (byte[])info.GetValue("hash", typeof(byte[]));
+            this.hash = (string)info.GetValue("hash", typeof(string));
             this.size = (long)info.GetValue("size", typeof(long));
             this.lastModified = (DateTime) info.GetValue("lastModified", typeof(DateTime));
         }
-
-
-    
-
+        
         public override string ToString()
         {
             return "RecordFile: " + nameAndPath + " " + hash + " " + size + " " + lastModified;
         }
-
-        public static int TODOTODELETE(int a)
-        {
-            return 2 * a;
-        }
-
 
     }
 

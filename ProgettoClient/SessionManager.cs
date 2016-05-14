@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Security.Cryptography;
 using System.Net.Sockets;
 using System.IO;
+using System.Runtime.Serialization;
 
 namespace ProgettoClient
 {
@@ -40,7 +41,7 @@ namespace ProgettoClient
         private const string commSndAgain = "SNDAGAIN";
 
 
-        //todo: inserire commDBError
+        //todo?: inserire commDBError
 
         private string serverIP;
         private int serverPort;
@@ -77,7 +78,7 @@ namespace ProgettoClient
             sendToServer(this.rootFolder);
             if (strRecCommFromServer().Equals(commFolderOk)) //dovrebbe ricevere sempre FOLDEROK
             {
-                MyLogger.add("cartella selezionata correttamente.\n");
+                MyLogger.print("cartella selezionata correttamente.\n");
                 return true;
             }
             else
@@ -128,14 +129,14 @@ namespace ProgettoClient
             userPassword = ConcatByte(userPassword, this.hashPassword);
             userPassword = ConcatByte(userPassword, this.separator_r_n);
             sendToServer(userPassword);
-            switch (commloggedok)//strRecFromServer()) TODO:ripristinare chiamata
+            switch (/*commloggedok*/strRecCommFromServer())
             {
                 case commloggedok:
                     logged = true;
                     break;
                 case commloginerr:
                     //create_ac?
-                    MyLogger.add("errore nel login\n");
+                    MyLogger.print("errore nel login\n");
                     bool wantNewAcc = (bool)mainWindow.Dispatcher.Invoke(mainWindow.DelAskNewAccount);
                     if (wantNewAcc)
                     {
@@ -159,6 +160,7 @@ namespace ProgettoClient
 
         private void newConnection()
         {
+            MyLogger.print("Tentativo di connessione in corso...");
             try
             {
                 clientSocket.Connect(serverIP, serverPort);
@@ -166,9 +168,10 @@ namespace ProgettoClient
             }
             catch (SocketException)
             {
-                MyLogger.add("Collegamento al server fallito");
+                MyLogger.print("Collegamento al server fallito\n");
                 throw;
             }
+            MyLogger.print("Connesso\n");
         }
 
         private string strRecCommFromServer() //TODO: idea: se qui controllo e se il server mi ha inviato DB_ERROR lanciassi una eccezione?
@@ -203,7 +206,6 @@ namespace ProgettoClient
             sendToServer(utf8.GetBytes(toSend.ToCharArray()));
         }
 
-
         private byte[] ConcatByte(byte[] a, byte[] b)
         {
             byte[] c = new byte[a.Length + b.Length];
@@ -218,41 +220,43 @@ namespace ProgettoClient
                 return;
 
             sendToServer(commLogout_str);
-            MyLogger.add("disconnessione in corso...");
+            MyLogger.print("disconnessione in corso...");
 
             waitForAck(commCmdAckFromServer);
 
-            MyLogger.add("disconnessione effettuata\n");
+            MyLogger.print("disconnessione effettuata\n");
 
             logged = false;
-
         }
-
 
         internal void syncDeletedFile(RecordFile rf)
         {
+            MyLogger.debug("deleting file: " + rf.nameAndPath);
             sendToServer(commDeleteFile);
             waitForAck(commCmdAckFromServer);
 
             sendToServer(rf.toSendFormat());
             waitForAck(commInfoAckFromServer);
-
-            //throw new NotImplementedException();
+            MyLogger.debug("deleted\n");
         }
 
         internal void syncUpdatedFile(RecordFile rf)
         {
+            MyLogger.debug("updating file: " + rf.nameAndPath);
             sendToServer(commUpdFile);
             waitForAck(commCmdAckFromServer);
             SendWholeFileToServer(rf);
+            MyLogger.debug("updated");
         }
 
         internal void syncNewFiles(RecordFile rf)
         {
+            MyLogger.debug("newing file: " + rf.nameAndPath);
             sendToServer(commNewFile);
             waitForAck(commCmdAckFromServer);
 
             SendWholeFileToServer(rf);
+            MyLogger.debug("newed");
         }
 
 
@@ -331,16 +335,21 @@ namespace ProgettoClient
 
         public void askForSingleFile(RecoverRecord rr)
         {
+            MyLogger.debug("asking for file: " + rr.rf.nameAndPath);
             sendToServer(commRecoverFile);
             waitForAck(commCmdAckFromServer);
 
-            //"file.txt\r\n121"
-            sendToServer(rr.rf.nameAndPath + "\r\n" + rr.backupVersion.ToString());
+            try
+            {
+                RecFileContent(rr);
+            }
+            catch (CancelFileRequestException c)
+            {
+                return;
+            }
 
-            RecFileContent(rr);
-
-            //TODO: eliminare da recoverRecords
-
+            //TODO?: eliminare da recoverRecords. da recoverEntryList è già eliminato.
+            MyLogger.debug("received\n");
         }
 
         private void SendWholeFileToServer(RecordFile rf)
@@ -388,9 +397,33 @@ namespace ProgettoClient
 
         private void RecFileContent(RecoverRecord rr)
         {
-            FileStream fout = File.Open(rr.rf.nameAndPath, FileMode.CreateNew);
-            //TODO: se il file esiste già? lo sovrascrivo?
+            FileStream fout;
+            try
+            {
+                fout = File.Open(rr.rf.nameAndPath, FileMode.CreateNew);
+            }
+            catch(IOException e)
+            {
+                //file omonimo esiste già, oppure directory not found. apro una dialog di salvataggio
+                Microsoft.Win32.SaveFileDialog sfd = new Microsoft.Win32.SaveFileDialog();
+                sfd.FileName = rr.rf.nameAndPath;
+                Nullable<bool> result = sfd.ShowDialog();
+                if (result == true)
+                {
+                   fout = File.Open(sfd.FileName, FileMode.CreateNew);
+                }
+                else
+                {
+                    //annullo richiesta recupero di questo file
+                    throw new CancelFileRequestException();
+                }
+            }
 
+            //invio al server della richiesta per il file specifico.
+            //"file.txt\r\n121\r\n"
+            sendToServer(rr.rf.nameAndPath + "\r\n" + rr.backupVersion.ToString() + "\r\n");
+
+            //ricezione e salvataggio su disco.
             var buffer = new byte[1024];
             int bytesRead;
             while ((bytesRead = serverStream.Read(buffer, 0, buffer.Length)) > 0)
@@ -399,21 +432,29 @@ namespace ProgettoClient
             }
 
             fout.Close();
+
+        }
+
+        //TODO?
+        internal void RecoverLastBackup()
+        {
+            throw new NotImplementedException();
         }
     }
 
-    class LoginFailedException : Exception
-    { }
+    
+    class CancelFileRequestException : Exception { }
 
-    class AckErrorException : Exception
-    { }
+    class LoginFailedException : Exception { }
 
-    class UnknownServerResponseException : Exception
-    { }
+    class AckErrorException : Exception { }
 
-    class RootSetErrorException : Exception
-    { }
+    class UnknownServerResponseException : Exception { }
+
+    class RootSetErrorException : Exception { }
 }
 
 
 //TODO:test all SessionManager
+
+//TODO?: quando usare funzione server di invio (client->server) backup completo?

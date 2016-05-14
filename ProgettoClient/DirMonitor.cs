@@ -56,16 +56,16 @@ namespace ProgettoClient
             
             //TODO: FORSE questo if serviva solo per debug?
             if (deletedFiles.Count > 0) { 
-                MyLogger.add("deleted files:");
+                MyLogger.print("deleted files:");
                 foreach (var item in deletedFiles)
-                    MyLogger.add(item);
+                    MyLogger.print(item);
             }
             //MyLogger.add("scanDir done");
             MyLogger.line();
         }
 
 
-        //TODO: questo sistema funziona con i file RIMOSSI? Sì, DOVREBBE. da testare.
+        //TODO?: questo sistema funziona con i file RIMOSSI? Sì, DOVREBBE. da testare.
         internal void confirmSync(RecordFile f)
         {
             dim.confirmSync(f);
@@ -97,20 +97,20 @@ namespace ProgettoClient
             switch (status)
             {                                    
                 case FileStatus.New:
-                    MyLogger.add("new: ");
+                    MyLogger.print("new: ");
                     newFiles.Add(thisFile);
                     break;
                 case FileStatus.Updated:
-                    MyLogger.add("updated: ");
+                    MyLogger.print("updated: ");
                     updatedFiles.Add(thisFile);
                     break;
                 case FileStatus.Old:
-                    MyLogger.add("old: ");
+                    MyLogger.print("old: ");
                     //nothing to do
                     break;
             }
             //MyLogger.add(thisFile);
-            MyLogger.add(fi.Name + "\n");
+            MyLogger.print(fi.Name + "\n");
         }
 
                 
@@ -134,12 +134,12 @@ namespace ProgettoClient
             catch (UnauthorizedAccessException e)
             {
                 // da gestire il caso che non ho privilegi sufficienti ???
-                MyLogger.add(e.Message);
+                MyLogger.print(e.Message);
             }
 
             catch (System.IO.DirectoryNotFoundException e)
             {
-                MyLogger.add(e.Message);
+                MyLogger.print(e.Message);
                 throw;
             }
 

@@ -12,11 +12,12 @@ namespace ProgettoClient.Tests
     public class MyConverterTests
     {
         [TestMethod()]
-        public void toFixedLengthByteArrayTest()
+        public void extractNameAndFolderTest()
         {
-            long x = -1;
-            byte[] y = MyConverter.toFixedLengthByteArray(x);
-            Assert.AreEqual(x.ToString(), y.ToString());
+            string path = "C:\\dir1\\dir 2\\nome.txt";
+            string[] res = MyConverter.extractNameAndFolder(path);
+            Assert.AreEqual("C:\\dir1\\dir 2\\", res[0]);
+            Assert.AreEqual("nome.txt", res[1]);
         }
     }
 }

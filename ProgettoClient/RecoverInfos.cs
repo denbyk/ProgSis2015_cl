@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace ProgettoClient
 {
-    class RecoverInfos
+    public class RecoverInfos
     {
         myRecoverRecordEqComparer mrrEqCmp;
         HashSet<RecoverRecord> recInfos;
@@ -37,7 +37,7 @@ namespace ProgettoClient
 
         /// <summary>
         /// </summary>
-        /// <param name="line">formato: [Percorso completo]\r\n[Ultima modifica -> 8byte][Hash -> 32byte]</param>
+        /// <param name="line">formato: // Invio: [Percorso completo]\r\n[Ultima modifica (16 char)][Hash (32 char)]\r\n </param>
         public void addRawRecord(string line, int backupVersion)
         {
             //separo campi di line
@@ -45,16 +45,11 @@ namespace ProgettoClient
             string[] part = line.Split(stringSeparators, StringSplitOptions.None);
 
             //estraggo lastModify string
-            double lmString = Convert.ToDouble(part[1].Substring(0, 8));
+            long lmString = Convert.ToInt64(part[1].Substring(0, 16));
+            string hashStr = part[1].Substring(16, 32);
 
-            //TODO: fix this (size is not fixed)
-            char[] hashStr = part[1].Substring(8, 32).ToCharArray();
-            //byte[] hashByte = BitConverter.GetBytes(hashStr);
-
-            //TODO: ma qui hash è su 32 byte???? qual'è quello giusto?
-            //TODO replace null with hash
             addRecoverRecord(
-                new RecordFile(part[0], null, -1, MyConverter.UnixTimestampToDateTime(lmString)),
+                new RecordFile(part[0], hashStr, -1, MyConverter.UnixTimestampToDateTime(lmString)),
                 backupVersion);
         }
 
@@ -74,7 +69,7 @@ namespace ProgettoClient
         }
 
 
-        internal List<RecoverRecord> getRecoverList()
+        public List<RecoverRecord> getRecoverList()
         {
             return recInfos.ToList<RecoverRecord>();
         }

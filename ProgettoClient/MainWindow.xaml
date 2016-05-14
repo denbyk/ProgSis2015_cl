@@ -1,8 +1,8 @@
 ﻿<Window x:Class="ProgettoClient.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="MainWindow" Height="579" Width="756"
-        Closing="Window_Closing">
+        Title="Beckap" Height="579" Width="756"
+        Closing="Window_Closing" Icon="floppy_icone_9020_128_6xa_icon.ico">
     <Grid Focusable="True" Margin="2,0,-2,0">
         <Button x:Name="buttSelSyncSir" HorizontalAlignment="Left" VerticalAlignment="Top" Width="24" Margin="330,84,0,0" Height="23" Click="Button_Click" Content="...">
         </Button>
@@ -19,7 +19,7 @@
         <TextBlock HorizontalAlignment="Left" Margin="13,148,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="152" Height="20"><Run Text="Sincronizzazione Automatica"/><LineBreak/><Run/></TextBlock>
         <Button x:Name="buttManualStartStopSync" Content="Sincronizza Ora" HorizontalAlignment="Left" Margin="175,173,0,0" VerticalAlignment="Top" Width="152" Height="41" Click="buttManualStartStopSync_Click"/>
         <TextBlock HorizontalAlignment="Left" Margin="175,148,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="152" Height="20"><Run Text="Sincronizzazione "/><Run Text="Manuale"/><LineBreak/><Run Text="+"/><LineBreak/><Run/></TextBlock>
-        <Button x:Name="buttRecover" Content="Ripristina &#xD;&#xA;ultima versione" HorizontalAlignment="Left" Margin="13,247,0,0" VerticalAlignment="Top" Width="152" Height="41" Click="buttRecover_Click"/>
+        <Button x:Name="buttRecover" Content="Ripristina File" HorizontalAlignment="Left" Margin="13,247,0,0" VerticalAlignment="Top" Width="152" Height="41" Click="buttRecover_Click"/>
         <TextBlock HorizontalAlignment="Left" Margin="18,222,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="30" Height="20" RenderTransformOrigin="0.667,2.75"><Run Text="ogni:"/><LineBreak/><Run/></TextBlock>
         <TextBlock HorizontalAlignment="Left" Margin="93,222,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="72" Height="20"><Run Text="minuti"/><LineBreak/><Run/></TextBlock>
         <TextBox x:Name="textboxCycleTime" HorizontalAlignment="Left" Height="23" Margin="48,219,0,0" TextWrapping="Wrap" Text="1" VerticalAlignment="Top" Width="40" TextAlignment="Center" LostFocus="textboxCycleTime_LostFocus" KeyDown="textboxCycleTime_KeyDown"/>
@@ -28,6 +28,7 @@
         <TextBox x:Name="textboxUtente" HorizontalAlignment="Left" Height="19" Margin="11,39,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="120" TextAlignment="Center" LostFocus="textboxCycleTime_LostFocus" KeyDown="textboxCycleTime_KeyDown"/>
         <TextBox x:Name="textboxPassword" HorizontalAlignment="Left" Height="19" Margin="150,39,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="120" TextAlignment="Center" LostFocus="textboxCycleTime_LostFocus" KeyDown="textboxCycleTime_KeyDown"/>
         <Button x:Name="buttLogin" Content="Login" HorizontalAlignment="Left" Margin="275,39,0,0" VerticalAlignment="Top" Width="50" Height="19" Click="buttLoginLogout_Click"/>
+        <Button x:Name="buttRecoverFolder" Content="Ripristina Cartella" HorizontalAlignment="Left" Margin="175,247,0,0" VerticalAlignment="Top" Width="152" Height="41" Click="buttRecoverFolder_Click"/>
 
     </Grid>
 </Window>

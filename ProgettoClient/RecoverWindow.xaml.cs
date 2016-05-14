@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -74,11 +75,22 @@ namespace ProgettoClient
         /// <param name="e"></param>
         private void DEBUGBUTT_Click(object sender, RoutedEventArgs e)
         {
-            var ris = new RecoverInfos();
-            ris.addRawRecord("C:\\primo.txt\r\n0000000900000000000000000000000000000001", 1);
-            ris.addRawRecord("C:\\secondo.txt\r\n0000000900000000000000000000000000000001", 1);
-            ris.addRawRecord("C:\\primo.txt\r\n0000000900000000000000000000000000000001", 2);
-            showRecoverInfos(ris);
+            //test vari generali
+            Microsoft.Win32.SaveFileDialog sfd = new Microsoft.Win32.SaveFileDialog();
+            string s = "C:\\dati\\ciao.txt";
+            string[] sTot = MyConverter.extractNameAndFolder(s);
+            sfd.InitialDirectory = sTot[0];
+            sfd.FileName = sTot[1];
+            bool? result = sfd.ShowDialog();
+            if (result == true)
+            {
+                FileStream fout = File.Open(sfd.FileName, FileMode.CreateNew);
+            }
+            else
+            {
+                //gestire annullamento
+                throw new NotImplementedException();
+            }
         }
     }
 

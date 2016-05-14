@@ -197,6 +197,25 @@ namespace ProgettoClient
             }
         }
 
+        private bool _needToRecoverLastBackup;
+        internal bool needToRecoverLastBackup
+        {
+            get
+            {
+                lock (this)
+                {
+                    return _needToRecoverLastBackup;
+                }
+            }
+            set
+            {
+                lock (this)
+                {
+                    _needToRecoverLastBackup = value;
+                }
+            }
+        }
+        
         private  RecoverRecord _fileToRecover;
         internal RecoverRecord fileToRecover
         {
@@ -283,6 +302,7 @@ namespace ProgettoClient
         {
             //init UI
             InitializeComponent();
+            interfaceMode = interfaceMode_t.notLogged;
 
             //init delegates
             DelWriteLog = writeInLog_RichTextBox;
@@ -296,7 +316,6 @@ namespace ProgettoClient
             //load last settings from file
             LoadSettings();
 
-
             this.CycleNowEvent = new EventWaitHandle(false, EventResetMode.ManualReset);
             //this.CheckForAbortEvent = new EventWaitHandle(false, EventResetMode.ManualReset);
 
@@ -309,7 +328,7 @@ namespace ProgettoClient
             ApplySettings();
 
             //let's start
-            MyLogger.add("si comincia\n");
+            MyLogger.print("si comincia\n");
 
             //imposto thread secondario
             logicThread = new Thread(logicThreadStart);
@@ -340,13 +359,13 @@ namespace ProgettoClient
             {
                 buttStartStopAutoSync.Content = AUTOSYNC_ON_TEXT;
                 SyncTimer.Start();
-                MyLogger.add("AutoSync started\n");
+                MyLogger.print("AutoSync started\n");
             }
             else
             {
                 buttStartStopAutoSync.Content = AUTOSYNC_OFF_TEXT;
                 SyncTimer.Stop();
-                MyLogger.add("AutoSync stopped\n");
+                MyLogger.print("AutoSync stopped\n");
             }
         }
         
@@ -385,7 +404,7 @@ namespace ProgettoClient
 
         private void ManualSync()
         {
-            MyLogger.add("Sync in corso...\n");
+            MyLogger.print("Sync in corso...\n");
             bool wasAutoSyncOn = SyncTimer.IsEnabled;
             
             if(wasAutoSyncOn)
@@ -408,8 +427,8 @@ namespace ProgettoClient
             TerminateLogicThread = true;
             CheckForAbortSignaled = true;
             MakeLogicThreadCycle();
-            //attende chiusura del logicThread
-            logicThread.Join();
+            //attende chiusura del logicThread se non è già chiuso
+            if (logicThread.IsAlive == true) logicThread.Join();
             ////reimposta interfaccia grafica in modalità not logged
             //interfaceMode = interfaceMode_t.notLogged; dovrebbe già farla il logicThread
         }
@@ -436,7 +455,7 @@ namespace ProgettoClient
             catch (Exception e)
             {
                 //se non esiste o non riesco a caricare settings:
-                MyLogger.add("Impossibile trovare impostanzioni precedenti");
+                MyLogger.print("Impossibile trovare impostanzioni precedenti");
                 settings = new Settings(DEFAULT_FOLDERROOT_PATH, DEFAULT_CYCLE_TIME, DEFAULT_AUTOSYNCTOGGLE, DEFAULT_USER, DEFAULT_PASSW);
             }
         }
@@ -452,7 +471,7 @@ namespace ProgettoClient
             }
             catch (Exception e)
             {
-                MyLogger.add("impossibile salvare file settings. le impostazioni attuali non saranno salvate");
+                MyLogger.print("impossibile salvare file settings. le impostazioni attuali non saranno salvate");
                 //MyLogger.add(e.Message);
             }
         }
@@ -462,17 +481,22 @@ namespace ProgettoClient
         /// </summary>
         private void MakeLogicThreadCycle()
         {
+            if (!logicThread.IsAlive)
+            {
+                logicThread.Start();
+                return;
+            }
             CycleNowEventSignaled = true;
             CycleNowEvent.Set(); //permette al logicThread di procedere.
         }
 
         private void SyncTimerHandler(object sender, EventArgs e)
         {
-            MyLogger.add("AutoSync in corso\n");
+            MyLogger.print("AutoSync in corso\n");
             needToSync = true;
             MakeLogicThreadCycle(); //permette al logicThread di procedere.
 
-            //TODO: possibile problema per timer troppo corto -> thread secondario non riesce a stare dietro a tutte le richieste?
+            //TODO?: possibile problema per timer troppo corto -> thread secondario non riesce a stare dietro a tutte le richieste?
             //possib soluzione: far riprendere il timer dopo che thread secondario ha finito il sync
             //ricomincia
             SyncTimer.Start();
@@ -480,7 +504,7 @@ namespace ProgettoClient
 
         private void AbortTimerHandler(object sender, EventArgs e)
         {
-            MyLogger.add("DA CANCELLARE");
+            MyLogger.print("DA CANCELLARE");
             CheckForAbortSignaled = true; //caso di checkForAbort, non di SyncNowEvent. no needToSync
             CycleNowEvent.Set(); //permette al logicThread di procedere.
             AbortTimer.Start();
@@ -531,7 +555,7 @@ namespace ProgettoClient
                 settings.setCycleTime(num);
             }
             applyScanInterval(settings.getCycleTime());
-            MyLogger.add("cycle time = " + settings.getCycleTime());
+            MyLogger.print("cycle time = " + settings.getCycleTime());
 
         }
 
@@ -578,6 +602,12 @@ namespace ProgettoClient
             }
         }
 
+        private void buttRecoverFolder_Click(object sender, RoutedEventArgs e)
+        {
+            needToRecoverLastBackup = true;
+            MakeLogicThreadCycle();
+        }
+
         /*-------------------------------------------------------------------------------------------------------------*/
         /*---logic Tread methods---------------------------------------------------------------------------------------*/
         /*-------------------------------------------------------------------------------------------------------------*/
@@ -585,9 +615,12 @@ namespace ProgettoClient
         //siamo nel secondo thread, quello che non gestisce la interfaccia grafica.
         private void logicThreadStart()
         {
+            //TODO:DEBUG, DA TOGLIERE LA PROSSIMA RIGA
+            this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.logged); //DEBUG
+
             try //catch errori non recuperabili per il thread
             {
-                //avvio tmer per verifica abort signals
+                //avvio tmer per verifica abort signals periodicamente
                 AbortTimer.Start();
 
                 //inizializzo oggetto per connessione con server
@@ -622,6 +655,11 @@ namespace ProgettoClient
                                 SyncAll();
                                 needToSync = false;
                             }
+                            if (needToRecoverLastBackup)
+                            {
+                                sm.RecoverLastBackup();
+                                needToRecoverLastBackup = false;
+                            }
                             //verifica se deve richiedere dati per ripristino di file vecchi
                             if (needToAskRecoverInfo)
                             {
@@ -645,13 +683,16 @@ namespace ProgettoClient
                     }
                     catch (SocketException)
                     {
-                        MyLogger.add("impossibile connettersi. Nuovo tentativo alla prossima sincronizzazione.");
+                        MyLogger.print("impossibile connettersi. Server non ragiungibile");
                         connected = false; //ripete login e selezione cartella dopo attesa
-                        WaitForSyncTime();
+                        //consento a utente di modificare dati di accesso
+                        //TODO: DEBUG: riattivare riga dopo!!
+                        //this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.notLogged);
+                        break; //il thread logico si chiude.
                     }
                     catch (LoginFailedException)
                     {
-                        MyLogger.add("errore nel login. Correggere dati di accesso o creare nuovo utente.");
+                        MyLogger.print("errore nel login. Correggere dati di accesso o creare nuovo utente.");
                         connected = false;
                         //consento a utente di modificare dati di accesso
                         this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.notLogged);
@@ -659,17 +700,19 @@ namespace ProgettoClient
                     }
                     catch (RootSetErrorException)
                     {
-                        MyLogger.add("errore nella selezione della cartella. Correggere il path");
+                        MyLogger.print("errore nella selezione della cartella. Correggere il path");
                         connected = false;
                         //consento a utente di modificare dati di accesso
                         this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.notLogged);
                         break; //il thread logico si chiude.
                     }
                 } //fine while(!connected)
+                //disattivo il timer che sblocca periodicamente il logicThread affinchè controlli se deve abortire
+                AbortTimer.Stop();
             } //fine try esterno
             catch (AbortLogicThreadException)
             {
-                MyLogger.add("logicThreadStart sta per uscire");
+                MyLogger.print("logicThreadStart sta per uscire");
                 ///TODO ??? 
                 ///il logic thread si sta chiudendo (magari perchè utente ha chiuso il programma,
                 ///eventualmente chiudere connessioni varie.
@@ -681,7 +724,7 @@ namespace ProgettoClient
             catch (Exception e) //eccezione critica.
             {
                 MyLogger.line();
-                MyLogger.add(e.Message);
+                MyLogger.print(e.Message);
                 MyLogger.line();
                 throw;
             }
@@ -735,7 +778,6 @@ namespace ProgettoClient
                 d.confirmSync(f);
             }
         }
-
     }
 }   
 

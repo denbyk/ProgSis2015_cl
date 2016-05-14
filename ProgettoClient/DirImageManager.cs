@@ -125,7 +125,7 @@ namespace ProgettoClient
             catch (Exception e)
             {
                 //in caso di file danneggiato o simili considero che precedente stato della cartella fosse tutta vuota.
-                MyLogger.add("impossibile accedere a " + IMAGE_FILE_PATH + ". " + e.Message);
+                MyLogger.print("impossibile accedere a " + IMAGE_FILE_PATH + ". " + e.Message);
                 dirImage = new Dictionary<string, RecordFile>();
                 //throw;
             }
@@ -144,10 +144,10 @@ namespace ProgettoClient
             }
             catch (Exception e)
             {
-                MyLogger.add("impossibile scrivere immagine della directory su disco nel percorso: "
+                MyLogger.print("impossibile scrivere immagine della directory su disco nel percorso: "
                     + IMAGE_FILE_PATH);
-                MyLogger.add(e.Message);
-                //TODO è meglio fare rethrow o fare no???
+                MyLogger.print(e.Message);
+                //TODO? è meglio fare rethrow o fare no???
                 throw;
             }
 

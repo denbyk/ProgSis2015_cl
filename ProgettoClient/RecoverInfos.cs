@@ -9,7 +9,8 @@ namespace ProgettoClient
     public class RecoverInfos
     {
         myRecoverRecordEqComparer mrrEqCmp;
-        HashSet<RecoverRecord> recInfos;
+        List<RecoverRecord> recInfos;
+        List<int> BackupVersionNumbers;
         
         public RecoverInfos(string stream)
         {
@@ -20,7 +21,7 @@ namespace ProgettoClient
         private void init()
         {
             mrrEqCmp = new myRecoverRecordEqComparer();
-            recInfos = new HashSet<RecoverRecord>(mrrEqCmp);
+            recInfos = new List<RecoverRecord>();
         }
 
         public RecoverInfos()
@@ -56,6 +57,7 @@ namespace ProgettoClient
         public void removeRecoverRecord(RecoverRecord rr)
         {
             this.recInfos.Remove(rr);
+            //TODO?: se rimuovo ultimo di una versione con quel numero potrei avere problemi se non tolgo il numero dalla recInfosVersionNumbers?
         }
 
         // aggiunge i recordFile e la sua versione alle RecoverInfos eliminando eventuali
@@ -66,13 +68,34 @@ namespace ProgettoClient
         private void addRecoverRecord(RecordFile rf, int backupVersion)
         {
             recInfos.Add(new RecoverRecord(rf, backupVersion));
+            BackupVersionNumbers.Add(backupVersion);
         }
 
-
-        public List<RecoverRecord> getRecoverList()
+        /// <summary>
+        /// restituisce la lista in cui sono rimossi record di file identici a meno della versione
+        /// </summary>
+        /// <returns></returns>
+        public List<RecoverRecord> getRecoverUniqueList()
         {
-            return recInfos.ToList<RecoverRecord>();
+            var uniqueRecInfos = recInfos.Distinct<RecoverRecord>(new myRecoverRecordEqComparer());
+            return uniqueRecInfos.ToList<RecoverRecord>();
         }
+
+        /// <summary>
+        /// restituisce lista di recoverRecord di tutti e soli i record con versione = version
+        /// </summary>
+        /// <param name="version"></param>
+        /// <returns></returns>
+        public List<RecoverRecord> getVersionSpecificRecoverList(int version)
+        {
+            return recInfos.Where<RecoverRecord>(rr => rr.backupVersion == version).ToList<RecoverRecord>();
+        }
+
+        public List<int> getBackupVersionNumbers()
+        {
+            return BackupVersionNumbers;
+        }
+
     }
 
 

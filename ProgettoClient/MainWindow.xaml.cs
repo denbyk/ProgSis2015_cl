@@ -197,26 +197,26 @@ namespace ProgettoClient
             }
         }
 
-        private bool _needToRecoverLastBackup;
-        internal bool needToRecoverLastBackup
+        private bool _needToRecoverWholeBackup;
+        internal bool needToRecoverWholeBackup
         {
             get
             {
                 lock (this)
                 {
-                    return _needToRecoverLastBackup;
+                    return _needToRecoverWholeBackup;
                 }
             }
             set
             {
                 lock (this)
                 {
-                    _needToRecoverLastBackup = value;
+                    _needToRecoverWholeBackup = value;
                 }
             }
         }
-        
-        private  RecoverRecord _fileToRecover;
+
+        private RecoverRecord _fileToRecover;
         internal RecoverRecord fileToRecover
         {
             get
@@ -235,7 +235,27 @@ namespace ProgettoClient
             }
         }
 
-        internal enum interfaceMode_t {
+        private int _versionToRecover;
+        internal int versionToRecover
+        {
+            get
+            {
+                lock (this)
+                {
+                    return _versionToRecover;
+                }
+            }
+            set
+            {
+                lock (this)
+                {
+                    _versionToRecover = value;
+                }
+            }
+        }
+
+        internal enum interfaceMode_t
+        {
             logged,
             notLogged
         };
@@ -271,7 +291,7 @@ namespace ProgettoClient
                     buttLogin.Content = "Login";
                     buttStartStopAutoSync.IsEnabled = false;
                     buttManualStartStopSync.IsEnabled = false;
-                    buttRecover.IsEnabled = false;
+                    //buttRecover.IsEnabled = false;
                     textboxCycleTime.IsEnabled = false;
 
                     _interfaceMode = value;
@@ -292,7 +312,7 @@ namespace ProgettoClient
                 SyncTimer.Interval = value;
                 //SyncTimer.Start();
             }
-        }    
+        }
 
         private Settings settings;
         private SessionManager sm;
@@ -368,12 +388,12 @@ namespace ProgettoClient
                 MyLogger.print("AutoSync stopped\n");
             }
         }
-        
+
         private void applyUser(string User)
         {
             this.textboxUtente.Text = User;
         }
-        
+
         private void applyPassw(string Password)
         {
             textboxPassword.Text = Password;
@@ -406,16 +426,16 @@ namespace ProgettoClient
         {
             MyLogger.print("Sync in corso...\n");
             bool wasAutoSyncOn = SyncTimer.IsEnabled;
-            
-            if(wasAutoSyncOn)
+
+            if (wasAutoSyncOn)
                 SyncTimer.Stop();
 
 
             needToSync = true;
             MakeLogicThreadCycle(); //permette al logicThread di procedere.
-            
+
             //TODO: possibile stesso problema di autosync (timer scatta prima che sync finisca?
-            if(wasAutoSyncOn)
+            if (wasAutoSyncOn)
                 SyncTimer.Start();
         }
 
@@ -604,7 +624,7 @@ namespace ProgettoClient
 
         private void buttRecoverFolder_Click(object sender, RoutedEventArgs e)
         {
-            needToRecoverLastBackup = true;
+            needToRecoverWholeBackup = true;
             MakeLogicThreadCycle();
         }
 
@@ -615,8 +635,9 @@ namespace ProgettoClient
         //siamo nel secondo thread, quello che non gestisce la interfaccia grafica.
         private void logicThreadStart()
         {
+            MyLogger.debug("LogicThread starting");
             //TODO:DEBUG, DA TOGLIERE LA PROSSIMA RIGA
-            this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.logged); //DEBUG
+            //this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.logged); //DEBUG
 
             try //catch errori non recuperabili per il thread
             {
@@ -625,100 +646,109 @@ namespace ProgettoClient
 
                 //inizializzo oggetto per connessione con server
                 sm = new SessionManager(HARDCODED_SERVER_IP, HARDCODED_SERVER_PORT, this);
-                bool connected = false;
+                //bool connected = false;
 
-                while (!connected)
+                //while (!connected)
+                //{
+                //try //catch errori che richiedono riconnessione
+                //{ NON CI SONO ECCEZIONI CHE MERITINO DI RICONNETTERSI SENZA DARE modo a utente di cambiare qualche info di login
+                //gestione del login
+                sm.login(settings.getUser(), settings.getPassw());
+                //connected = true;
+
+                //selezione cartella
+                sm.setRootFolder(settings.getRootFolder());
+
+                //attiva modalità logged nella UI
+                this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.logged);
+
+                //voglio iniziare con una sync
+                needToSync = true;
+
+                //ciclo finchè la connessione è attiva. si esce solo con eccezione o con chiusura thread logico (anch'essa un'eccezione).
+                while (true)
                 {
-                    try //catch errori che richiedono riconnessione
+                    //verifica se deve sincronizzare
+                    if (needToSync)
                     {
-                        //gestione del login
-                        sm.login(settings.getUser(), settings.getPassw());
-                        connected = true;
-                        
-                        //selezione cartella
-                        sm.setRootFolder(settings.getRootFolder());
-
-                        //attiva modalità logged nella UI
-                        this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.logged);
-
-                        //voglio iniziare con una sync
-                        needToSync = true;
-
-                        //ciclo finchè la connessione è attiva. si esce solo con eccezione o con chiusura thread logico.
-                        while (true)
+                        //creo un DirMonitor che analizza la cartella
+                        d = new DirMonitor(settings.getRootFolder());
+                        SyncAll();
+                        needToSync = false;
+                    }
+                    //verifica se deve richiedere l'intero ultimo backup
+                    if (needToRecoverWholeBackup)
+                    {
+                        sm.RecoverBackupVersion();
+                        needToRecoverWholeBackup = false;
+                    }
+                    //verifica se deve richiedere dati per ripristino di file vecchi
+                    if (needToAskRecoverInfo)
+                    {
+                        recInfos = sm.askForRecoverInfo();
+                        needToAskRecoverInfo = false;
+                        if (recoverW.IsVisible)
                         {
-                            //verifica se deve sincronizzare
-                            if (needToSync)
-                            {
-                                //creo un DirMonitor che analizza la cartella
-                                d = new DirMonitor(settings.getRootFolder());
-                                SyncAll();
-                                needToSync = false;
-                            }
-                            if (needToRecoverLastBackup)
-                            {
-                                sm.RecoverLastBackup();
-                                needToRecoverLastBackup = false;
-                            }
-                            //verifica se deve richiedere dati per ripristino di file vecchi
-                            if (needToAskRecoverInfo)
-                            {
-                                recInfos = sm.askForRecoverInfo();
-                                needToAskRecoverInfo = false;
-                                if (recoverW.IsVisible)
-                                {
-                                    recoverW.Dispatcher.Invoke(DelShowRecoverInfos, recInfos);
-                                }
-                            }
-                            //recupera recoverRecord
-                            if (needToAskForFileToRecover)
-                            {
-                                needToAskForFileToRecover = false;
-
-                                //recupera file
-                                sm.askForSingleFile(fileToRecover);
-                            }
-                            WaitForSyncTime();
+                            recoverW.Dispatcher.Invoke(DelShowRecoverInfos, recInfos);
                         }
                     }
-                    catch (SocketException)
+                    //recupera recoverRecord
+                    if (needToAskForFileToRecover)
                     {
-                        MyLogger.print("impossibile connettersi. Server non ragiungibile");
-                        connected = false; //ripete login e selezione cartella dopo attesa
-                        //consento a utente di modificare dati di accesso
-                        //TODO: DEBUG: riattivare riga dopo!!
-                        //this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.notLogged);
-                        break; //il thread logico si chiude.
+                        needToAskForFileToRecover = false;
+
+                        //recupera file
+                        sm.askForSingleFile(fileToRecover);
                     }
-                    catch (LoginFailedException)
-                    {
-                        MyLogger.print("errore nel login. Correggere dati di accesso o creare nuovo utente.");
-                        connected = false;
-                        //consento a utente di modificare dati di accesso
-                        this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.notLogged);
-                        break; //il thread logico si chiude.
-                    }
-                    catch (RootSetErrorException)
-                    {
-                        MyLogger.print("errore nella selezione della cartella. Correggere il path");
-                        connected = false;
-                        //consento a utente di modificare dati di accesso
-                        this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.notLogged);
-                        break; //il thread logico si chiude.
-                    }
-                } //fine while(!connected)
+                    WaitForSyncTime();
+                }
+                //} NON CI SONO ECCEZIONI CHE MERITINO DI RICONNETTERSI SENZA DARE modo a utente di cambiare qualche info di login
+
+                //} //fine while(!connected)
+            } //fine try esterno
+            catch (SocketException)
+            {
+                MyLogger.print("impossibile connettersi. Server non ragiungibile");
+                //connected = false; //ripete login e selezione cartella dopo attesa
+                //consento a utente di modificare dati di accesso
+                //TODO: DEBUG: riattivare riga dopo!!
+                this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.notLogged);
                 //disattivo il timer che sblocca periodicamente il logicThread affinchè controlli se deve abortire
                 AbortTimer.Stop();
-            } //fine try esterno
+                return; //il thread logico si chiude.
+            }
+            catch (LoginFailedException)
+            {
+                MyLogger.print("errore nel login. Correggere dati di accesso o creare nuovo utente.");
+                //connected = false;
+                //consento a utente di modificare dati di accesso
+                this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.notLogged);
+                //disattivo il timer che sblocca periodicamente il logicThread affinchè controlli se deve abortire
+                AbortTimer.Stop();
+                return; //il thread logico si chiude.
+            }
+            catch (RootSetErrorException)
+            {
+                MyLogger.print("errore nella selezione della cartella. Correggere il path");
+                sm.logout();
+                //connected = false;
+                //consento a utente di modificare dati di accesso
+                this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.notLogged);
+                //disattivo il timer che sblocca periodicamente il logicThread affinchè controlli se deve abortire
+                AbortTimer.Stop();
+                return; //il thread logico si chiude.
+            }
             catch (AbortLogicThreadException)
             {
-                MyLogger.print("logicThreadStart sta per uscire");
                 ///TODO ??? 
                 ///il logic thread si sta chiudendo (magari perchè utente ha chiuso il programma,
                 ///eventualmente chiudere connessioni varie.
                 sm.logout(); //è sufficiente?
                 //consento a utente di modificare dati di accesso
                 this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.notLogged);
+                //disattivo il timer che sblocca periodicamente il logicThread affinchè controlli se deve abortire
+                AbortTimer.Stop();
+                MyLogger.debug("LogicThread closing");
                 return; //fine thread logico
             }
             catch (Exception e) //eccezione critica.
@@ -726,6 +756,9 @@ namespace ProgettoClient
                 MyLogger.line();
                 MyLogger.print(e.Message);
                 MyLogger.line();
+                //disattivo il timer che sblocca periodicamente il logicThread affinchè controlli se deve abortire
+                AbortTimer.Stop();
+                MyLogger.debug("LogicThread closing");
                 throw;
             }
         }
@@ -749,7 +782,7 @@ namespace ProgettoClient
             } while (!CycleNowEventSignaled); ////evita spurie di syncNow
             CycleNowEventSignaled = false;
         }
-        
+
         /// <summary>
         /// estraggo i vari record dei file e li sincronizzo con il server
         /// </summary>
@@ -779,7 +812,7 @@ namespace ProgettoClient
             }
         }
     }
-}   
+}
 
 //TODO:
 /* 

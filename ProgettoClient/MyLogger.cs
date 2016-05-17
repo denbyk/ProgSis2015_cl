@@ -36,9 +36,13 @@ namespace ProgettoClient
             MyLogger.print("-----------------------------------------------\n");
         }
 
-        internal static void debug(string v)
+        internal static void debug(string mess)
         {
-            throw new NotImplementedException();
+            //TODOthrow new NotImplementedException();
+            mess = "!!! " + mess + "\n";
+            Trace.WriteLine(mess);
+            Trace.Flush();
+            mainWindow.Dispatcher.BeginInvoke(mainWindow.DelWriteLog, mess);
         }
     }
 }

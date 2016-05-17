@@ -16,7 +16,8 @@
                 </GridView>
             </ListView.View>
         </ListView>
-        <Button x:Name="DEBUGBUTT" Content="DEBUG" HorizontalAlignment="Left" Margin="266,414,0,0" VerticalAlignment="Top" Width="75" Click="DEBUGBUTT_Click"/>
+        <Button x:Name="DEBUGBUTT" Content="DEBUG" HorizontalAlignment="Left" Margin="505,425,0,0" VerticalAlignment="Top" Width="75" Click="DEBUGBUTT_Click"/>
+        <ComboBox x:Name="comboRecoverViewMode" HorizontalAlignment="Left" Margin="137,406,0,0" VerticalAlignment="Top" Width="228" SelectionChanged="comboRecoverViewMode_SelectionChanged" />
 
     </Grid>
 </Window>

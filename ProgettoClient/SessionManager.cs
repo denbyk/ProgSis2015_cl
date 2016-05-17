@@ -21,6 +21,8 @@ namespace ProgettoClient
     //classe che si occupa di dialogare con il server.
     class SessionManager
     {
+        //TODO: set a timeout sensato (-1 = infinito):
+        private int cnstReadTimeout = -1; //ms
         private const int commLength = 8;
         private const string commLogin_str = "LOGIN___";
         private const string commLogout_str = "LOGOUT__";
@@ -31,6 +33,7 @@ namespace ProgettoClient
         private const string commUpdFile = "UPD_FILE";
         private const string commRecoverInfo = "FLD_STAT";
         private const string commRecoverFile = "FILE_SND";
+        private const string commRecoverBackup = "SYNC_SND";
 
         private const string commFolderOk = "FOLDEROK";
         private const string commloggedok = "LOGGEDOK";
@@ -129,7 +132,7 @@ namespace ProgettoClient
             userPassword = ConcatByte(userPassword, this.hashPassword);
             userPassword = ConcatByte(userPassword, this.separator_r_n);
             sendToServer(userPassword);
-            switch (/*commloggedok*/strRecCommFromServer())
+            switch (commloggedok)//strRecCommFromServer())
             {
                 case commloggedok:
                     logged = true;
@@ -165,6 +168,7 @@ namespace ProgettoClient
             {
                 clientSocket.Connect(serverIP, serverPort);
                 serverStream = clientSocket.GetStream();
+                serverStream.ReadTimeout = cnstReadTimeout;
             }
             catch (SocketException)
             {
@@ -182,7 +186,27 @@ namespace ProgettoClient
         private byte[] recCommFromServer()
         {
             byte[] res = new byte[commLength];
-            serverStream.Read(res, 0, res.Length); //TODO: e se la connessione si interrompe?
+            try
+            {
+                serverStream.Read(res, 0, res.Length); //TODO: e se la connessione si interrompe?
+            }
+            catch(Exception e) when (e is IOException || e is ObjectDisposedException)
+            {
+                //L'oggetto Socket sottostante è chiuso.
+                //-oppure -
+                //La classe NetworkStream è chiusa.
+                //-oppure -
+                //Si è verificato un errore durante la lettura dalla rete.
+                MyLogger.print("Errore nella comunicazione con il server");
+                MyLogger.debug(e.ToString());
+                throw new SocketException();
+                //mainWindow.
+            }
+            catch (Exception e)
+            {
+                MyLogger.debug(e.ToString());
+                throw;
+            }
             return res;
         }
 
@@ -335,7 +359,7 @@ namespace ProgettoClient
 
         public void askForSingleFile(RecoverRecord rr)
         {
-            MyLogger.debug("asking for file: " + rr.rf.nameAndPath);
+            MyLogger.print("recovering file: " + rr.rf.nameAndPath);
             sendToServer(commRecoverFile);
             waitForAck(commCmdAckFromServer);
 
@@ -349,7 +373,7 @@ namespace ProgettoClient
             }
 
             //TODO?: eliminare da recoverRecords. da recoverEntryList è già eliminato.
-            MyLogger.debug("received\n");
+            MyLogger.print("received\n");
         }
 
         private void SendWholeFileToServer(RecordFile rf)
@@ -435,10 +459,28 @@ namespace ProgettoClient
 
         }
 
-        //TODO?
-        internal void RecoverLastBackup()
+        //TODO: implementare.
+        internal void RecoverBackupVersion(int versionToRecover)
         {
             throw new NotImplementedException();
+            MyLogger.print("recovering backup version: " + versionToRecover);
+            sendToServer(commRecoverBackup);
+            waitForAck(commCmdAckFromServer);
+
+            //try
+            //{
+            //    //RecBackup(versionToRecover);
+            //    //invio numero versione
+            //    //ricezione di un file alla volta ma in che ordine?
+            //    throw new NotImplementedException;
+            //}
+            //catch ()
+            //{
+            //    return;
+            //}
+
+            ////TODO?: eliminare da recoverRecords. da recoverEntryList è già eliminato.
+            MyLogger.print(" received\n");
         }
     }
 

@@ -25,6 +25,7 @@ namespace ProgettoClient
         private int cnstReadTimeout = -1; //ms
         private const int commLength = 8;
         private const string commLogin_str = "LOGIN___";
+        private const string commAcc_str = "CREATEAC";
         private const string commLogout_str = "LOGOUT__";
         private const string commSetFold_str = "SET_FOLD";
         private const string commClrFolder_str = "SET_FOLD";
@@ -78,6 +79,7 @@ namespace ProgettoClient
         {
             this.rootFolder = utf8.GetBytes(rootFolder);
             sendToServer(commSetFold_str);
+            waitForAck(commCmdAckFromServer);
             sendToServer(this.rootFolder);
             if (strRecCommFromServer().Equals(commFolderOk)) //dovrebbe ricevere sempre FOLDEROK
             {
@@ -123,7 +125,9 @@ namespace ProgettoClient
             SHA256 mySha256 = SHA256Managed.Create();
             byte[] utf8psw = utf8.GetBytes(password);
             //hash(utf8(psw))
-            this.hashPassword = mySha256.ComputeHash(utf8psw, 0, utf8psw.Length);
+            byte[] hashPswByte = mySha256.ComputeHash(utf8psw, 0, utf8psw.Length);
+            string hex = BitConverter.ToString(hashPswByte).Replace("-", string.Empty); //rappresentazione in esadecimale -> 32 caratteri.
+            this.hashPassword = utf8.GetBytes(hex);
 
             sendToServer(commLogin_str);
 
@@ -132,7 +136,7 @@ namespace ProgettoClient
             userPassword = ConcatByte(userPassword, this.hashPassword);
             userPassword = ConcatByte(userPassword, this.separator_r_n);
             sendToServer(userPassword);
-            switch (commloggedok)//strRecCommFromServer())
+            switch (/*commloggedok)*/strRecCommFromServer())
             {
                 case commloggedok:
                     logged = true;
@@ -143,8 +147,8 @@ namespace ProgettoClient
                     bool wantNewAcc = (bool)mainWindow.Dispatcher.Invoke(mainWindow.DelAskNewAccount);
                     if (wantNewAcc)
                     {
-                        createAccount();
-                        login(user, password);
+                        //newConnection();
+                        createAccount(user, password); //login automatico
                         return;
                     }
                     else
@@ -156,9 +160,31 @@ namespace ProgettoClient
 
         }
 
-        private void createAccount()
+        private void createAccount(string user, string password)
         {
-            throw new NotImplementedException();
+            //string -> utf8
+            this.user = utf8.GetBytes(user);
+
+            
+            //per riferimento, così faccio con md5
+            //byte[] x = md5.ComputeHash(stream); //char di 16 caratteri.
+            //string hex = BitConverter.ToString(x).Replace("-", string.Empty); //rappresentazione in esadecimale -> 32 caratteri.
+            //return hex;
+
+            SHA256 mySha256 = SHA256Managed.Create();
+            byte[] utf8psw = utf8.GetBytes(password);
+            //hash(utf8(psw))
+            byte[] hashPswByte = mySha256.ComputeHash(utf8psw, 0, utf8psw.Length);
+            string hex = BitConverter.ToString(hashPswByte).Replace("-", string.Empty); //rappresentazione in esadecimale -> 32 caratteri.
+            this.hashPassword = utf8.GetBytes(hex);
+
+            sendToServer(commAcc_str);
+
+            //invio "[username]\r\n[sha-256_password]\r\n"
+            byte[] userPassword = ConcatByte(this.user, separator_r_n);
+            userPassword = ConcatByte(userPassword, this.hashPassword);
+            userPassword = ConcatByte(userPassword, this.separator_r_n);
+            sendToServer(userPassword);
         }
 
         private void newConnection()
@@ -166,13 +192,22 @@ namespace ProgettoClient
             MyLogger.print("Tentativo di connessione in corso...");
             try
             {
+                /*
+                if (clientSocket.Connected)
+                {
+                    //TODO!:chiudere connessione dopo tentativo di login fallito
+                    clientSocket.EndConnect();
+                }
+                */
+                //System.Net.IPAddress address = System.Net.IPAddress.Parse(serverIP);
                 clientSocket.Connect(serverIP, serverPort);
                 serverStream = clientSocket.GetStream();
                 serverStream.ReadTimeout = cnstReadTimeout;
             }
-            catch (SocketException)
+            catch (SocketException se)
             {
                 MyLogger.print("Collegamento al server fallito\n");
+                MyLogger.print(se);
                 throw;
             }
             MyLogger.print("Connesso\n");
@@ -269,6 +304,7 @@ namespace ProgettoClient
             MyLogger.debug("updating file: " + rf.nameAndPath);
             sendToServer(commUpdFile);
             waitForAck(commCmdAckFromServer);
+            //TODO!: aspettare eventuale MISS_BCK o BACKUPOK
             SendWholeFileToServer(rf);
             MyLogger.debug("updated");
         }

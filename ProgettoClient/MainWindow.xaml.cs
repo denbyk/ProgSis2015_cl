@@ -28,7 +28,7 @@ namespace ProgettoClient
     /// </summary>
     public partial class MainWindow : Window
     {
-        public delegate void AddLog_dt(string log);
+                public delegate void AddLog_dt(string log);
         public AddLog_dt DelWriteLog;
 
         public delegate bool AskNewAccount_dt();
@@ -47,14 +47,15 @@ namespace ProgettoClient
         private const bool DEFAULT_AUTOSYNCTOGGLE = false;
         private const string AUTOSYNC_OFF_TEXT = "Start";
         private const string AUTOSYNC_ON_TEXT = "Stop";
-        private const string DEFAULT_USER = "default";
-        private const string DEFAULT_PASSW = "default";
-        private const int HARDCODED_SERVER_PORT = 8888;
+        private const string DEFAULT_USER = "ù1";
+        private const string DEFAULT_PASSW = "pù1";
+        private const int HARDCODED_SERVER_PORT = 1200;
+        private const bool DEBUG_DONT_LOGIN = true;
 
         private TimeSpan checkForAbortTimeSpan = new TimeSpan(0, 0, 3);
 
         //TODO: not hardcode
-        private const string HARDCODED_SERVER_IP = "127.0.0.1";
+        private const string HARDCODED_SERVER_IP = "192.168.0.101";//"127.0.0.1";
 
         DirMonitor d;
         DispatcherTimer SyncTimer;
@@ -679,8 +680,10 @@ namespace ProgettoClient
                     //verifica se deve richiedere l'intero ultimo backup
                     if (needToRecoverWholeBackup)
                     {
+                        /*
                         sm.RecoverBackupVersion();
                         needToRecoverWholeBackup = false;
+                        */
                     }
                     //verifica se deve richiedere dati per ripristino di file vecchi
                     if (needToAskRecoverInfo)

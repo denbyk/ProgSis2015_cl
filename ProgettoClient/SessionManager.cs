@@ -42,6 +42,8 @@ namespace ProgettoClient
         private const string commCmdAckFromServer = "CMND_REC";
         private const string commInfoAckFromServer = "INFO_OK_";
         private const string commDataAckFromServer = "DATA_OK_";
+        private const string commMissBackupFromServer = "MISS_BCK";
+        private const string commBackupOkFromServer = "BACKUPOK";
         private const string commSndAgain = "SNDAGAIN";
 
 
@@ -165,7 +167,7 @@ namespace ProgettoClient
             //string -> utf8
             this.user = utf8.GetBytes(user);
 
-            
+
             //per riferimento, così faccio con md5
             //byte[] x = md5.ComputeHash(stream); //char di 16 caratteri.
             //string hex = BitConverter.ToString(x).Replace("-", string.Empty); //rappresentazione in esadecimale -> 32 caratteri.
@@ -192,13 +194,11 @@ namespace ProgettoClient
             MyLogger.print("Tentativo di connessione in corso...");
             try
             {
-                /*
+                //se già connesso abort del thread logico
                 if (clientSocket.Connected)
                 {
-                    //TODO!:chiudere connessione dopo tentativo di login fallito
-                    clientSocket.EndConnect();
+                    throw new DoubleConnectionException();
                 }
-                */
                 //System.Net.IPAddress address = System.Net.IPAddress.Parse(serverIP);
                 clientSocket.Connect(serverIP, serverPort);
                 serverStream = clientSocket.GetStream();
@@ -225,7 +225,7 @@ namespace ProgettoClient
             {
                 serverStream.Read(res, 0, res.Length); //TODO: e se la connessione si interrompe?
             }
-            catch(Exception e) when (e is IOException || e is ObjectDisposedException)
+            catch (Exception e) when (e is IOException || e is ObjectDisposedException)
             {
                 //L'oggetto Socket sottostante è chiuso.
                 //-oppure -
@@ -304,9 +304,14 @@ namespace ProgettoClient
             MyLogger.debug("updating file: " + rf.nameAndPath);
             sendToServer(commUpdFile);
             waitForAck(commCmdAckFromServer);
-            //TODO!: aspettare eventuale MISS_BCK o BACKUPOK
-            SendWholeFileToServer(rf);
-            MyLogger.debug("updated");
+            //aspettare eventuale MISS_BCK o BACKUPOK
+            if (strRecCommFromServer() == commBackupOkFromServer)
+            {
+                SendWholeFileToServer(rf);
+                MyLogger.debug("updated");
+            }
+            else
+                throw new AckErrorException();
         }
 
         internal void syncNewFiles(RecordFile rf)
@@ -314,9 +319,14 @@ namespace ProgettoClient
             MyLogger.debug("newing file: " + rf.nameAndPath);
             sendToServer(commNewFile);
             waitForAck(commCmdAckFromServer);
-
-            SendWholeFileToServer(rf);
-            MyLogger.debug("newed");
+            //aspettare eventuale MISS_BCK o BACKUPOK
+            if (strRecCommFromServer() == commBackupOkFromServer)
+            {
+                SendWholeFileToServer(rf);
+                MyLogger.debug("newed");
+            }
+            else
+                throw new AckErrorException();
         }
 
 
@@ -332,7 +342,7 @@ namespace ProgettoClient
 
                 int nFile;
                 //per ogni versione
-                for (int bv=0; bv<numVers; bv++)
+                for (int bv = 0; bv < numVers; bv++)
                 {
                     nFile = Convert.ToInt32(readline());
                     //per ogni file
@@ -342,7 +352,7 @@ namespace ProgettoClient
                         ris.addRawRecord(readline() + readline(), bv);
                     }
                 }
-                
+
             }
             catch (Exception)
             {
@@ -378,7 +388,7 @@ namespace ProgettoClient
                 {
                     //elimina il \r gi# memorizzato in sb
                     sb.Remove(sb.Length - 1, 1);
-                    break; 
+                    break;
                 }
             }
             return sb.ToString();
@@ -462,7 +472,7 @@ namespace ProgettoClient
             {
                 fout = File.Open(rr.rf.nameAndPath, FileMode.CreateNew);
             }
-            catch(IOException e)
+            catch (IOException e)
             {
                 //file omonimo esiste già, oppure directory not found. apro una dialog di salvataggio
                 Microsoft.Win32.SaveFileDialog sfd = new Microsoft.Win32.SaveFileDialog();
@@ -470,7 +480,7 @@ namespace ProgettoClient
                 Nullable<bool> result = sfd.ShowDialog();
                 if (result == true)
                 {
-                   fout = File.Open(sfd.FileName, FileMode.CreateNew);
+                    fout = File.Open(sfd.FileName, FileMode.CreateNew);
                 }
                 else
                 {
@@ -520,7 +530,8 @@ namespace ProgettoClient
         }
     }
 
-    
+    class DoubleConnectionException : Exception { }
+
     class CancelFileRequestException : Exception { }
 
     class LoginFailedException : Exception { }

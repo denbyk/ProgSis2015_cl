@@ -318,6 +318,7 @@ namespace ProgettoClient
         private Settings settings;
         private SessionManager sm;
         private RecoverWindow recoverW;
+        private bool firstConnSync;
 
         public MainWindow()
         {
@@ -351,10 +352,8 @@ namespace ProgettoClient
             //let's start
             MyLogger.print("si comincia\n");
 
-            //imposto thread secondario
-            logicThread = new Thread(logicThreadStart);
-
             //DEBUG: lo fa partire il tasto login in realtà
+            //logicThread = new Thread(logicThreadStart);
             //logicThread.Start(); 
         }
 
@@ -445,6 +444,8 @@ namespace ProgettoClient
         /// </summary>
         private void LogicThreadShutDown()
         {
+            if (logicThread == null)
+                return;
             TerminateLogicThread = true;
             CheckForAbortSignaled = true;
             MakeLogicThreadCycle();
@@ -501,8 +502,8 @@ namespace ProgettoClient
         /// permette al logic thread di procedere
         /// </summary>
         private void MakeLogicThreadCycle()
-        {
-            if (!logicThread.IsAlive)
+        {           
+            if (!logicThread.IsAlive && !TerminateLogicThread)
             {
                 logicThread.Start();
                 return;
@@ -615,6 +616,8 @@ namespace ProgettoClient
         {
             if (interfaceMode == interfaceMode_t.notLogged)
             {
+                //imposto thread secondario
+                logicThread = new Thread(logicThreadStart);
                 logicThread.Start();
             }
             else
@@ -666,12 +669,22 @@ namespace ProgettoClient
                 //voglio iniziare con una sync
                 needToSync = true;
 
+                //è la prima sync per questa connessione
+                firstConnSync = true;
+
                 //ciclo finchè la connessione è attiva. si esce solo con eccezione o con chiusura thread logico (anch'essa un'eccezione).
                 while (true)
                 {
                     //verifica se deve sincronizzare
                     if (needToSync)
                     {
+                        //TODO!: se è la prima sincronizzazione di questa connessione al server,
+                        // chiedi i dati e crea DirMonitor
+                        if (firstConnSync)
+                        {
+                            //TODO!
+                        }
+
                         //creo un DirMonitor che analizza la cartella
                         d = new DirMonitor(settings.getRootFolder());
                         SyncAll();
@@ -715,20 +728,12 @@ namespace ProgettoClient
                 //connected = false; //ripete login e selezione cartella dopo attesa
                 //consento a utente di modificare dati di accesso
                 //TODO: DEBUG: riattivare riga dopo!!
-                this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.notLogged);
-                //disattivo il timer che sblocca periodicamente il logicThread affinchè controlli se deve abortire
-                AbortTimer.Stop();
-                return; //il thread logico si chiude.
             }
             catch (LoginFailedException)
             {
                 MyLogger.print("errore nel login. Correggere dati di accesso o creare nuovo utente.");
                 //connected = false;
                 //consento a utente di modificare dati di accesso
-                this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.notLogged);
-                //disattivo il timer che sblocca periodicamente il logicThread affinchè controlli se deve abortire
-                AbortTimer.Stop();
-                return; //il thread logico si chiude.
             }
             catch (RootSetErrorException)
             {
@@ -736,10 +741,6 @@ namespace ProgettoClient
                 sm.logout();
                 //connected = false;
                 //consento a utente di modificare dati di accesso
-                this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.notLogged);
-                //disattivo il timer che sblocca periodicamente il logicThread affinchè controlli se deve abortire
-                AbortTimer.Stop();
-                return; //il thread logico si chiude.
             }
             catch (AbortLogicThreadException)
             {
@@ -748,22 +749,24 @@ namespace ProgettoClient
                 ///eventualmente chiudere connessioni varie.
                 sm.logout(); //è sufficiente?
                 //consento a utente di modificare dati di accesso
-                this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.notLogged);
-                //disattivo il timer che sblocca periodicamente il logicThread affinchè controlli se deve abortire
-                AbortTimer.Stop();
-                MyLogger.debug("LogicThread closing");
-                return; //fine thread logico
+                MyLogger.debug("LogicThread closing per abort logic thread exception");
             }
             catch (Exception e) //eccezione critica.
             {
                 MyLogger.line();
                 MyLogger.print(e.Message);
                 MyLogger.line();
-                //disattivo il timer che sblocca periodicamente il logicThread affinchè controlli se deve abortire
-                AbortTimer.Stop();
                 MyLogger.debug("LogicThread closing");
-                throw;
             }
+            if (!TerminateLogicThread)
+            {
+                //setta la UI in modalità unlocked a meno che non sia TerminateLogicThread settata, 
+                //se no mainThread va in join e va in deadlock (non esegue invoke())
+                this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.notLogged);
+            }
+            //disattivo il timer che sblocca periodicamente il logicThread affinchè controlli se deve abortire
+            AbortTimer.Stop();
+            return; //logic thread termina qui
         }
 
         /// <summary>
@@ -825,3 +828,12 @@ namespace ProgettoClient
  * oppure rendere non modificabile questi campi...
  * 
 */
+/*
+ * TODO!
+ * quando la cartella non è mai stata sincronizzata uso le chiamate al server per un nuovo backup
+ * negli altri casi uso quelle che ho già usato.
+ * 
+ * per la creazione di DirImage.bin devo chiedere al server e non fidarmi della mia versione. 
+ * a ogni nuova connessione con il server chiedo DirImage.bin
+ * 
+ */

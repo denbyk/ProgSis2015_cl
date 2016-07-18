@@ -14,7 +14,7 @@ namespace ProgettoClient
 
     /// <summary>
     /// si occupa di tenere traccia della ultima versione conosciuta della cartella,
-    /// salvarla su disco e effettuare i confronti con record nuovi.
+    /// scaricarla dal server e effettuare i confronti con record nuovi.
     /// </summary>
     class DirImageManager
     {
@@ -32,11 +32,11 @@ namespace ProgettoClient
         private bool Updating = false;
         private HashSet<string> deletedFileNames;
 
-        public DirImageManager(System.IO.DirectoryInfo myDir)
+        public DirImageManager(System.IO.DirectoryInfo myDir, SessionManager sm)
         {
             this.myDir = myDir;
-            loadDirImage();
-            
+            dirImage = new Dictionary<string, RecordFile>();
+            loadDirImage(sm);
         }
 
 
@@ -108,28 +108,43 @@ namespace ProgettoClient
             return res;
         }
 
-
-        //carica la loadDirImage da disco. se riceve un eccezione carica la versione _old. 
-        //se non riesce allora crea una imageDir vuota.
-        //differenziare per varie cartelle ?? se cambio cartella perdo i dati della cartella prima?
-        private void loadDirImage()
+        private void loadDirImage(SessionManager sm)
         {
-            //controllo di caricare la versione nuova e non un eventuale versione vecchia.
-            FileStream fin;
-            try
+            RecoverInfos recInfo;
+
+            //richiede al server le info di recover
+            recInfo = sm.askForRecoverInfo();
+
+            //tiene solo ultima versione (stato attuale cartella su server)
+            List<RecoverRecord> lastVersionInfos = recInfo.getVersionSpecificRecoverList(recInfo.getLastBackupVersionNumber());
+            foreach (var rr in lastVersionInfos)
             {
-                fin = new FileStream(IMAGE_FILE_PATH, FileMode.Open);
-                dirImage = (Dictionary<string, RecordFile>)formatter.Deserialize(fin);
-                fin.Close();
-            }
-            catch (Exception e)
-            {
-                //in caso di file danneggiato o simili considero che precedente stato della cartella fosse tutta vuota.
-                MyLogger.print("impossibile accedere a " + IMAGE_FILE_PATH + ". " + e.Message);
-                dirImage = new Dictionary<string, RecordFile>();
-                //throw;
+                dirImage.Add(rr.rf.nameAndPath, rr.rf);
             }
         }
+
+        /*VERSIONE VECCHIA, SALVATAGGIO SU DISCO.*/
+        ////carica la loadDirImage da disco. se riceve un eccezione carica la versione _old. 
+        ////se non riesce allora crea una imageDir vuota.
+        ////differenziare per varie cartelle ?? se cambio cartella perdo i dati della cartella prima?
+        //private void loadDirImage()
+        //{
+        //    //controllo di caricare la versione nuova e non un eventuale versione vecchia.
+        //    FileStream fin;
+        //    try
+        //    {
+        //        fin = new FileStream(IMAGE_FILE_PATH, FileMode.Open);
+        //        dirImage = (Dictionary<string, RecordFile>)formatter.Deserialize(fin);
+        //        fin.Close();
+        //    }
+        //    catch (Exception e)
+        //    {
+        //        //in caso di file danneggiato o simili considero che precedente stato della cartella fosse tutta vuota.
+        //        MyLogger.print("impossibile accedere a " + IMAGE_FILE_PATH + ". " + e.Message);
+        //        dirImage = new Dictionary<string, RecordFile>();
+        //        //throw;
+        //    }
+        //}
 
         public void storeDirImage()
         {

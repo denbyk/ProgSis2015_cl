@@ -96,6 +96,11 @@ namespace ProgettoClient
             return BackupVersionNumbers;
         }
 
+        public int getLastBackupVersionNumber()
+        {
+            return BackupVersionNumbers.Max();
+        }
+
     }
 
 

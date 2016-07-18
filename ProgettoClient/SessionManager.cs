@@ -36,6 +36,11 @@ namespace ProgettoClient
         private const string commRecoverFile = "FILE_SND";
         private const string commRecoverBackup = "SYNC_SND";
 
+        private const string commInitialBackup = "SYNC_RCV";
+        private const string commIBNextFile = "REC_FILE";
+        private const string commIBSyncEnd = "SYNC_END";
+
+
         private const string commFolderOk = "FOLDEROK";
         private const string commloggedok = "LOGGEDOK";
         private const string commloginerr = "LOGINERR";
@@ -288,6 +293,22 @@ namespace ProgettoClient
             logged = false;
         }
 
+        public void sendInitialBackup(List<RecordFile> RecordFileList)
+        {
+            sendToServer(commInitialBackup);
+            waitForAck(commCmdAckFromServer);
+
+            foreach (var rf in RecordFileList)
+            {
+                sendToServer(commIBNextFile);
+                SendWholeFileToServer(rf);
+            }
+            sendToServer(commIBSyncEnd);
+
+            MyLogger.print("primo backup eseguito con successo\n");
+        }
+
+
         internal void syncDeletedFile(RecordFile rf)
         {
             MyLogger.debug("deleting file: " + rf.nameAndPath);
@@ -334,22 +355,31 @@ namespace ProgettoClient
         {
             sendToServer(commRecoverInfo);
             waitForAck(commCmdAckFromServer);
+            //TODO!:
+            /*
+             * per esempio se qui chiedo al server le recoverInfo di una folder appena creata lui me lo deve dire in qualche modo e io lancio una
+             * eccezione, non devo chiedere le recoverInfo per creare il mio dirImage, bensì devo effettuare un backup completo iniziale e poi chiedere
+             * nuovamente le recoverInfo
+             * if(){
+             *  throw new InitialBackupNeededException()
+             * }
+             */
             RecoverInfos ris = new RecoverInfos();
             try
             {
                 //leggi numero di versioni
-                int numVers = Convert.ToInt32(readline());
+                int numVers = Convert.ToInt32(socketReadline());
 
                 int nFile;
                 //per ogni versione
                 for (int bv = 0; bv < numVers; bv++)
                 {
-                    nFile = Convert.ToInt32(readline());
+                    nFile = Convert.ToInt32(socketReadline());
                     //per ogni file
                     for (int f = 0; f < nFile; f++)
                     {
                         // [Percorso completo]\r\n[Ultima modifica -> 8byte][Hash -> 32char]\r\n
-                        ris.addRawRecord(readline() + readline(), bv);
+                        ris.addRawRecord(socketReadline() + socketReadline(), bv);
                     }
                 }
 
@@ -366,7 +396,7 @@ namespace ProgettoClient
         /// non restituisce \r\n finale
         /// </summary>
         /// <returns></returns>
-        private string readline()
+        private string socketReadline()
         {
             System.Text.StringBuilder sb = new System.Text.StringBuilder();
             byte[] buf = new byte[1];
@@ -528,6 +558,9 @@ namespace ProgettoClient
             ////TODO?: eliminare da recoverRecords. da recoverEntryList è già eliminato.
             MyLogger.print(" received\n");
         }
+
+        
+
     }
 
     class DoubleConnectionException : Exception { }
@@ -541,6 +574,8 @@ namespace ProgettoClient
     class UnknownServerResponseException : Exception { }
 
     class RootSetErrorException : Exception { }
+
+    class InitialBackupNeededException : Exception { }
 }
 
 

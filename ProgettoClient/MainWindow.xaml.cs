@@ -28,7 +28,7 @@ namespace ProgettoClient
     /// </summary>
     public partial class MainWindow : Window
     {
-                public delegate void AddLog_dt(string log);
+        public delegate void AddLog_dt(string log);
         public AddLog_dt DelWriteLog;
 
         public delegate bool AskNewAccount_dt();
@@ -502,7 +502,7 @@ namespace ProgettoClient
         /// permette al logic thread di procedere
         /// </summary>
         private void MakeLogicThreadCycle()
-        {           
+        {
             if (!logicThread.IsAlive && !TerminateLogicThread)
             {
                 logicThread.Start();
@@ -678,15 +678,19 @@ namespace ProgettoClient
                     //verifica se deve sincronizzare
                     if (needToSync)
                     {
-                        //TODO!: se è la prima sincronizzazione di questa connessione al server,
-                        // chiedi i dati e crea DirMonitor
+                        // se è la prima sincronizzazione di questa connessione al server, crea DirMonitor
                         if (firstConnSync)
                         {
-                            //TODO!
-                        }
+                            firstConnSync = false;
 
-                        //creo un DirMonitor che analizza la cartella
-                        d = new DirMonitor(settings.getRootFolder());
+                            //init del dirMonitor
+                            d = new DirMonitor(settings.getRootFolder(), sm);
+                        }
+                        else
+                        {
+                            //scandisco root folder
+                            d.scanDir();
+                        }
                         SyncAll();
                         needToSync = false;
                     }

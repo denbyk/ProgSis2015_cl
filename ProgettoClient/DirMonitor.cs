@@ -15,47 +15,87 @@ namespace ProgettoClient
     class DirMonitor
     {
         delegate void doOnFile_d(System.IO.FileInfo fi);
-        
+
         private doOnFile_d doOnFile;
         private System.IO.DirectoryInfo myDir;
         private DirImageManager dim;
 
-        private HashSet<RecordFile> newFiles = new HashSet<RecordFile>();
-        private HashSet<RecordFile> updatedFiles = new HashSet<RecordFile>();
-        private HashSet<RecordFile> deletedFiles = new HashSet<RecordFile>();
-        
+        private HashSet<RecordFile> newFiles;
+        private HashSet<RecordFile> deletedFiles;
+        private HashSet<RecordFile> updatedFiles;
+
+        private List<RecordFile> completeFileList;
 
         public HashSet<RecordFile> getNewFiles() { return newFiles; }
         public HashSet<RecordFile> getUpdatedFiles() { return updatedFiles; }
         public HashSet<RecordFile> getDeletedFiles() { return deletedFiles; }
-        
+
         /// <summary>
         /// costruttore
         /// </summary>
         /// <param name="path">path della cartella da monitorare</param>
-        public DirMonitor(string path)
+        public DirMonitor(string path, SessionManager sm)
         {
             myDir = new System.IO.DirectoryInfo(path);
-            
-            if (!myDir.Exists) 
+
+            if (!myDir.Exists)
                 throw new System.IO.DirectoryNotFoundException(path);
-            dim = new DirImageManager(myDir);
+
+            try
+            {
+                dim = new DirImageManager(myDir, sm);
+            }
+            catch(InitialBackupNeededException ibne)
+            {
+                //TODO! ATTENZIONE, COME INTERROMPO L'APPLICAZIONE METRE STA FACENDO L'INITIAL BACKUP ?????
+                //TODO!
+                //non c'è ancora nessun backup sul server, impossibile scaricare una dirImage. 
+                //devo fare un initial backup completo. terminato quello bisogna riscaricare la dirImage
+
+                completeFileList = new List<RecordFile>();
+                
+                //salvo vecchio delegato
+                var buf = this.doOnFile;
+                this.doOnFile = addAllFiles;
+                
+                //crea elenco completo file in root dir e subdirs
+                WalkDirectoryTree(myDir, doOnFile);
+
+                //rimetto delegato di prima
+                this.doOnFile = buf;
+                
+                //effettua backup completo di tutti i file
+                sm.sendInitialBackup(completeFileList);
+                completeFileList = null;
+
+                //riscarico la dirImage
+                dim = new DirImageManager(myDir, sm);
+            }
             doOnFile = checkFile;
-            scanDir();
-            
         }
 
+        private void init()
+        {
+            newFiles = new HashSet<RecordFile>();
+            updatedFiles = new HashSet<RecordFile>();
+            deletedFiles = new HashSet<RecordFile>();
+        }
 
+        //va chiamata quando desidero eseguire un controllo sulle modifiche effettuate nella dir
         public void scanDir()
         {
+            //resetto le 4 categorie
+            init();
+
             //costriamo le 4 categorie (4 hashset)
             WalkDirectoryTree(myDir, doOnFile);
             deletedFiles = dim.getDeleted();
 
             //dim.storeDirImage(); devo salvare SOLO le DirImage con i file effettivamente sincronizzati
-            
+
             //TODO: FORSE questo if serviva solo per debug?
-            if (deletedFiles.Count > 0) { 
+            if (deletedFiles.Count > 0)
+            {
                 MyLogger.print("deleted files:");
                 foreach (var item in deletedFiles)
                     MyLogger.print(item);
@@ -69,20 +109,8 @@ namespace ProgettoClient
         internal void confirmSync(RecordFile f)
         {
             dim.confirmSync(f);
-            dim.storeDirImage(); //così salvo ogni file sincronizzato
+            //dim.storeDirImage(); non salvo + niente online
         }
-
-
-
-        //public void Pause()
-        //{
-        //    timer.Stop();                                                                      
-        //}
-
-        //public void Continue()
-        //{
-        //    timer.Start();
-        //}
 
 
         /// <summary>
@@ -95,7 +123,7 @@ namespace ProgettoClient
             RecordFile thisFile = new RecordFile(fi);
             FileStatus status = dim.UpdateStatus(thisFile);
             switch (status)
-            {                                    
+            {
                 case FileStatus.New:
                     MyLogger.print("new: ");
                     newFiles.Add(thisFile);
@@ -113,7 +141,16 @@ namespace ProgettoClient
             MyLogger.print(fi.Name + "\n");
         }
 
-                
+        /// <summary>
+        /// delegato che inserisce tutti i file in una lista
+        /// </summary>
+        /// <param name="fi"></param>
+        private void addAllFiles(System.IO.FileInfo fi)
+        {
+            completeFileList.Add(new RecordFile(fi));
+        }
+
+
         /// <summary>
         /// classe ricorsiva che scandisce tutto il tree di directory e chiama un delegato sui singoli file
         /// </summary>
@@ -166,7 +203,7 @@ namespace ProgettoClient
                 // Resursive call for each subdirectory.
                 WalkDirectoryTree(dirInfo, doOnFile);
             }
-            
+
         }
 
     }

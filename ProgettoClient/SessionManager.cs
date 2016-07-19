@@ -22,7 +22,7 @@ namespace ProgettoClient
     class SessionManager
     {
         //TODO: set a timeout sensato (-1 = infinito):
-        private int cnstReadTimeout = -1; //ms
+        private int cnstReadTimeout = 5000; //ms
         private const int commLength = 8;
         private const string commLogin_str = "LOGIN___";
         private const string commAcc_str = "CREATEAC";
@@ -35,6 +35,7 @@ namespace ProgettoClient
         private const string commRecoverInfo = "FLD_STAT";
         private const string commRecoverFile = "FILE_SND";
         private const string commRecoverBackup = "SYNC_SND";
+        private const string commDataRec = "DATA_REC";
 
         private const string commInitialBackup = "SYNC_RCV";
         private const string commIBNextFile = "REC_FILE";
@@ -192,6 +193,7 @@ namespace ProgettoClient
             userPassword = ConcatByte(userPassword, this.hashPassword);
             userPassword = ConcatByte(userPassword, this.separator_r_n);
             sendToServer(userPassword);
+            //TODO: risposta da server??
         }
 
         private void newConnection()
@@ -228,7 +230,7 @@ namespace ProgettoClient
             byte[] res = new byte[commLength];
             try
             {
-                serverStream.Read(res, 0, res.Length); //TODO: e se la connessione si interrompe?
+                serverStream.Read(res, 0, res.Length);
             }
             catch (Exception e) when (e is IOException || e is ObjectDisposedException)
             {
@@ -293,13 +295,18 @@ namespace ProgettoClient
             logged = false;
         }
 
+
         public void sendInitialBackup(List<RecordFile> RecordFileList)
         {
+            //TODO! nota: durante l'upload di un file grosso deve aspettare la fine dell'upload per chiudersi. 
+            //forse è meglio che il main process non faccia join ma si chiuda brutalmente?
             sendToServer(commInitialBackup);
             waitForAck(commCmdAckFromServer);
 
             foreach (var rf in RecordFileList)
             {
+                if (mainWindow.shouldIClose())
+                    throw new AbortLogicThreadException();
                 sendToServer(commIBNextFile);
                 SendWholeFileToServer(rf);
             }
@@ -369,22 +376,31 @@ namespace ProgettoClient
             {
                 //leggi numero di versioni
                 int numVers = Convert.ToInt32(socketReadline());
-
-                int nFile;
-                //per ogni versione
-                for (int bv = 0; bv < numVers; bv++)
+                if (numVers == 0)
                 {
+                    MyLogger.print("primo bakup necessario");
+                    return null;
+                }
+                int nFile;
+                int nVersCurr;
+                //per ogni versione
+                for (int bv = 1; bv <= numVers; bv++)
+                {
+                    nVersCurr = Convert.ToInt32(socketReadline());
+                    if (nVersCurr != bv)
+                        throw new Exception("nVersCurr != bv !!!!");
                     nFile = Convert.ToInt32(socketReadline());
                     //per ogni file
                     for (int f = 0; f < nFile; f++)
                     {
-                        // [Percorso completo]\r\n[Ultima modifica -> 8byte][Hash -> 32char]\r\n
-                        ris.addRawRecord(socketReadline() + socketReadline(), bv);
+                        // [Percorso completo]\r\n[Ultima modifica -> 16byte][Hash -> 32char]\r\n
+                        ris.addRawRecord(socketReadline() + "\r\n" +  socketReadline(), bv);
+                        sendToServer(commDataRec);
                     }
                 }
 
             }
-            catch (Exception)
+            catch (Exception e)
             {
                 //TODO: gestire errori in readline, in addRawRecord ecc...
                 throw;
@@ -406,12 +422,10 @@ namespace ProgettoClient
             while (true)
             {
                 serverStream.Read(buf, 0, buf.Length);
-                c = Convert.ToChar(buf);
+                c = Convert.ToChar(buf[0]);
                 if (c == '\r')
                 {
                     Rreceived = true;
-                    sb.Append(c);
-                    continue;
                 }
                 //se ho ricevuto \r\n:
                 if (c == '\n' && Rreceived)
@@ -420,17 +434,27 @@ namespace ProgettoClient
                     sb.Remove(sb.Length - 1, 1);
                     break;
                 }
+                sb.Append(c);
             }
             return sb.ToString();
         }
 
-
+        
         private void sendFileContent(RecordFile f)
         {
-            byte[] file = File.ReadAllBytes(f.nameAndPath);
-            //byte[] fileBuffer = new byte[file.Length];
-            //serverStream.Write(file.ToArray(), 0, fileBuffer.GetLength(0));
-            serverStream.Write(file.ToArray(), 0, file.Length); //TODO:gestire casi di errore, tra cui impossibile aprire il file ecc...
+            try
+            {
+                byte[] file = File.ReadAllBytes(f.nameAndPath);
+                //byte[] fileBuffer = new byte[file.Length];
+                //serverStream.Write(file.ToArray(), 0, fileBuffer.GetLength(0));
+                serverStream.Write(file.ToArray(), 0, file.Length); //TODO:gestire casi di errore, tra cui impossibile aprire il file ecc...
+            }
+            catch (Exception ex)
+            {
+                MyLogger.debug(ex.ToString());
+                MyLogger.print("errore leggendo il file");
+                throw;
+            }
         }
 
         public void askForSingleFile(RecoverRecord rr)
@@ -479,7 +503,7 @@ namespace ProgettoClient
 
                 //check ack
                 resp = strRecCommFromServer();
-                if (resp != commInfoAckFromServer)
+                if (resp != commDataAckFromServer)
                 {
                     if (resp == commSndAgain)
                     {
@@ -491,7 +515,7 @@ namespace ProgettoClient
                         throw new AckErrorException();
                     }
                 }
-
+                break;
             }
         }
 
@@ -535,7 +559,7 @@ namespace ProgettoClient
 
         }
 
-        //TODO: implementare.
+
         internal void RecoverBackupVersion(int versionToRecover)
         {
             throw new NotImplementedException();

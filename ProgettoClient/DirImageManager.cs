@@ -115,6 +115,13 @@ namespace ProgettoClient
             //richiede al server le info di recover
             recInfo = sm.askForRecoverInfo();
 
+            //se il server non ha nessuna informazione
+            if (recInfo == null)
+            {
+                //dirImage resta vuota
+                throw new InitialBackupNeededException();
+            }
+
             //tiene solo ultima versione (stato attuale cartella su server)
             List<RecoverRecord> lastVersionInfos = recInfo.getVersionSpecificRecoverList(recInfo.getLastBackupVersionNumber());
             foreach (var rr in lastVersionInfos)

@@ -147,7 +147,8 @@ namespace ProgettoClient
         /// <param name="fi"></param>
         private void addAllFiles(System.IO.FileInfo fi)
         {
-            completeFileList.Add(new RecordFile(fi));
+            if (fi.Length != 0)
+                completeFileList.Add(new RecordFile(fi));
         }
 
 

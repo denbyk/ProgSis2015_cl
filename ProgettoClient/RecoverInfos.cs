@@ -22,6 +22,7 @@ namespace ProgettoClient
         {
             mrrEqCmp = new myRecoverRecordEqComparer();
             recInfos = new List<RecoverRecord>();
+            BackupVersionNumbers = new List<int>();
         }
 
         public RecoverInfos()
@@ -46,11 +47,11 @@ namespace ProgettoClient
             string[] part = line.Split(stringSeparators, StringSplitOptions.None);
 
             //estraggo lastModify string
-            long lmString = Convert.ToInt64(part[1].Substring(0, 16));
+            long lmLong = Convert.ToInt64(part[1].Substring(0, 16), 16);
             string hashStr = part[1].Substring(16, 32);
 
             addRecoverRecord(
-                new RecordFile(part[0], hashStr, -1, MyConverter.UnixTimestampToDateTime(lmString)),
+                new RecordFile(part[0], hashStr, -1, MyConverter.UnixTimestampToDateTime(lmLong)),
                 backupVersion);
         }
 

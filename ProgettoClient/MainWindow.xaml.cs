@@ -49,13 +49,12 @@ namespace ProgettoClient
         private const string AUTOSYNC_ON_TEXT = "Stop";
         private const string DEFAULT_USER = "ù1";
         private const string DEFAULT_PASSW = "pù1";
-        private const int HARDCODED_SERVER_PORT = 1200;
         private const bool DEBUG_DONT_LOGIN = true;
+        private const string DEFAULT_IP = "192.168.0.101";//"127.0.0.1";
+        private const int DEFAULT_PORTA = 1200;
 
         private TimeSpan checkForAbortTimeSpan = new TimeSpan(0, 0, 3);
 
-        //TODO: not hardcode
-        private const string HARDCODED_SERVER_IP = "192.168.0.101";//"127.0.0.1";
 
         DirMonitor d;
         DispatcherTimer SyncTimer;
@@ -292,7 +291,7 @@ namespace ProgettoClient
                     buttLogin.Content = "Login";
                     buttStartStopAutoSync.IsEnabled = false;
                     buttManualStartStopSync.IsEnabled = false;
-                    //buttRecover.IsEnabled = false;
+                    buttRecover.IsEnabled = false;
                     textboxCycleTime.IsEnabled = false;
 
                     _interfaceMode = value;
@@ -399,6 +398,16 @@ namespace ProgettoClient
             textboxPassword.Text = Password;
         }
 
+        private void applyIP(string indIP)
+        {
+            textBoxIndIP.Text = indIP;
+        }
+
+        private void applyPorta(int porta)
+        {
+            textBoxPorta.Text = porta.ToString();
+        }
+
         private bool askNewAccount()
         {
             // Configure the message box to be displayed
@@ -440,10 +449,13 @@ namespace ProgettoClient
         }
 
         /// <summary>
-        /// //per chiudere il LogicThread in modo ordinato. TODO: non fa logout, chiude e basta.
+        /// per chiudere il LogicThread in modo ordinato.
         /// </summary>
         private void LogicThreadShutDown()
         {
+            //myLogger usa delegati, troppo lenti alla chiusura del programma. uso direttamente append()
+            //MyLogger.print("chiusura programma in corso...");
+            Log_RichTextBox.AppendText("chiusura programma in corso...");
             if (logicThread == null)
                 return;
             TerminateLogicThread = true;
@@ -462,6 +474,8 @@ namespace ProgettoClient
             this.setAutoSync(settings.getAutoSyncToggle());
             this.applyUser(settings.getUser());
             this.applyPassw(settings.getPassw());
+            this.applyIP(settings.getIP());
+            this.applyPorta(settings.getPorta());
         }
 
         private void LoadSettings()
@@ -478,7 +492,7 @@ namespace ProgettoClient
             {
                 //se non esiste o non riesco a caricare settings:
                 MyLogger.print("Impossibile trovare impostanzioni precedenti");
-                settings = new Settings(DEFAULT_FOLDERROOT_PATH, DEFAULT_CYCLE_TIME, DEFAULT_AUTOSYNCTOGGLE, DEFAULT_USER, DEFAULT_PASSW);
+                settings = new Settings(DEFAULT_FOLDERROOT_PATH, DEFAULT_CYCLE_TIME, DEFAULT_AUTOSYNCTOGGLE, DEFAULT_USER, DEFAULT_PASSW, DEFAULT_IP, DEFAULT_PORTA);
             }
         }
 
@@ -632,6 +646,43 @@ namespace ProgettoClient
             MakeLogicThreadCycle();
         }
 
+        private void textboxPathSyncDir_LostFocus(object sender, RoutedEventArgs e)
+        {
+            settings.setRootFolder(textboxPathSyncDir.Text);
+        }
+
+        private void textboxUtente_LostFocus(object sender, RoutedEventArgs e)
+        {
+            settings.setUser(textboxUtente.Text);
+        }
+
+        private void textboxPassword_LostFocus(object sender, RoutedEventArgs e)
+        {
+            settings.setPassw(textboxPassword.Text);
+        }
+
+        private void textBoxPorta_LostFocus(object sender, RoutedEventArgs e)
+        {
+            int res;
+            try
+            {
+                res = Int32.Parse(textBoxPorta.Text);
+            }
+            catch (FormatException fe)
+            {
+                MyLogger.debug(fe.ToString());
+                textBoxPorta.Text = DEFAULT_PORTA.ToString();
+                return;
+            }
+            settings.setPorta(res);
+        }
+
+        private void textBoxIndIP_LostFocus(object sender, RoutedEventArgs e)
+        {
+            settings.setIP(textBoxIndIP.Text);
+        }
+
+
         /*-------------------------------------------------------------------------------------------------------------*/
         /*---logic Tread methods---------------------------------------------------------------------------------------*/
         /*-------------------------------------------------------------------------------------------------------------*/
@@ -649,7 +700,7 @@ namespace ProgettoClient
                 AbortTimer.Start();
 
                 //inizializzo oggetto per connessione con server
-                sm = new SessionManager(HARDCODED_SERVER_IP, HARDCODED_SERVER_PORT, this);
+                sm = new SessionManager(settings.getIP(), settings.getPorta(), this);
                 //bool connected = false;
 
                 //while (!connected)
@@ -742,6 +793,7 @@ namespace ProgettoClient
             catch (RootSetErrorException)
             {
                 MyLogger.print("errore nella selezione della cartella. Correggere il path");
+                //TODO! devo fare logout? forse no xkè server mi ha buttato fuori
                 sm.logout();
                 //connected = false;
                 //consento a utente di modificare dati di accesso
@@ -750,9 +802,7 @@ namespace ProgettoClient
             {
                 ///TODO ??? 
                 ///il logic thread si sta chiudendo (magari perchè utente ha chiuso il programma,
-                ///eventualmente chiudere connessioni varie.
-                sm.logout(); //è sufficiente?
-                //consento a utente di modificare dati di accesso
+                ///eventualmente chiudere connessioni varie?
                 MyLogger.debug("LogicThread closing per abort logic thread exception");
             }
             catch (Exception e) //eccezione critica.
@@ -821,6 +871,15 @@ namespace ProgettoClient
                 d.confirmSync(f);
             }
         }
+
+        /// <summary>
+        /// logic thread checks if main thread wants him to close
+        /// </summary>
+        public bool shouldIClose()
+        {
+            return TerminateLogicThread;
+        }
+
     }
 }
 

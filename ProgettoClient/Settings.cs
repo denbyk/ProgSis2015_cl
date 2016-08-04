@@ -8,7 +8,7 @@ using System.Runtime.Serialization;
 namespace ProgettoClient
 {
     [Serializable]
-    class Settings : ISerializable
+    public class Settings : ISerializable
     {
         //cartella di sincronizzazione
         private string RootFolder;
@@ -18,7 +18,7 @@ namespace ProgettoClient
         private bool AutoSyncToggle;
         //user/psw
         private string User;
-        private string Passw; //TODO: ? passw salvata ~ in chiaro su hd. è un problema?
+        private string Passw;
         //IP e porta
         private string indIP;
         private int porta;

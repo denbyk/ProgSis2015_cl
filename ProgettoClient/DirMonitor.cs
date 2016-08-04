@@ -47,7 +47,7 @@ namespace ProgettoClient
             }
             catch(InitialBackupNeededException ibne)
             {
-                //TODO! ATTENZIONE, COME INTERROMPO L'APPLICAZIONE METRE STA FACENDO L'INITIAL BACKUP ?????
+                //TODO! ATTENZIONE, COME INTERROMPO L'APPLICAZIONE METRE STA FACENDO L'INITIAL BACKUP ????? al momento non c'è modo
                 //TODO!
                 //non c'è ancora nessun backup sul server, impossibile scaricare una dirImage. 
                 //devo fare un initial backup completo. terminato quello bisogna riscaricare la dirImage
@@ -72,6 +72,7 @@ namespace ProgettoClient
                 dim = new DirImageManager(myDir, sm);
             }
             doOnFile = checkFile;
+            init();
         }
 
         private void init()
@@ -106,9 +107,9 @@ namespace ProgettoClient
 
 
         //TODO?: questo sistema funziona con i file RIMOSSI? Sì, DOVREBBE. da testare.
-        internal void confirmSync(RecordFile f)
+        internal void confirmSync(RecordFile f, bool deleting = false)
         {
-            dim.confirmSync(f);
+            dim.confirmSync(f, deleting);
             //dim.storeDirImage(); non salvo + niente online
         }
 
@@ -121,6 +122,8 @@ namespace ProgettoClient
         {
             //MyLogger.add(fi.Name + "\n");
             RecordFile thisFile = new RecordFile(fi);
+            if (fi.Length == 0)
+                return;
             FileStatus status = dim.UpdateStatus(thisFile);
             switch (status)
             {

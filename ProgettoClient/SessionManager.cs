@@ -21,6 +21,9 @@ namespace ProgettoClient
     //classe che si occupa di dialogare con il server.
     class SessionManager
     {
+        private bool DEBUGGING = true; //TODO: remove
+
+
         //TODO: set a timeout sensato (-1 = infinito):
         private int cnstReadTimeout = 5000; //ms
         private const int commLength = 8;
@@ -36,6 +39,7 @@ namespace ProgettoClient
         private const string commRecoverFile = "FILE_SND";
         private const string commRecoverBackup = "SYNC_SND";
         private const string commDataRec = "DATA_REC";
+        private const string commAlreadyLogged = "ALRTHERE";
 
         private const string commInitialBackup = "SYNC_RCV";
         private const string commIBNextFile = "REC_FILE";
@@ -51,6 +55,10 @@ namespace ProgettoClient
         private const string commMissBackupFromServer = "MISS_BCK";
         private const string commBackupOkFromServer = "BACKUPOK";
         private const string commSndAgain = "SNDAGAIN";
+        private const string commDBERROR = "DB_ERROR";
+        private const string commDELETED = "DELETED_";
+        private const string commNOTDEL = "NOT_DEL_";
+        private const string commNameTooLongPARTIAL = "MAXC_"; //"MAXC_---" dove --- sono il numero max di byte
 
 
         //todo?: inserire commDBError
@@ -72,6 +80,7 @@ namespace ProgettoClient
         //private Dictionary<byte[], commandsEnum> commands;
 
         private MainWindow mainWindow;
+        
 
         public SessionManager(string serverIP, int serverPort, MainWindow mainWindow)
         {
@@ -157,18 +166,29 @@ namespace ProgettoClient
                     {
                         //newConnection();
                         createAccount(user, password); //login automatico
+                        logged = true;
                         return;
                     }
                     else
                     {
+                        logged = false;
                         throw new LoginFailedException();
                     }
+                    break;
+                case commAlreadyLogged:
+                    MyLogger.print("utente già connesso");
+                    logged = false;
+                    throw new LoginFailedException();
+                    break;
+                default:
+                    logged = false;
+                    throw new LoginFailedException();
                     break;
             }
 
         }
 
-        private void createAccount(string user, string password)
+        public void createAccount(string user, string password)
         {
             //string -> utf8
             this.user = utf8.GetBytes(user);
@@ -192,8 +212,33 @@ namespace ProgettoClient
             byte[] userPassword = ConcatByte(this.user, separator_r_n);
             userPassword = ConcatByte(userPassword, this.hashPassword);
             userPassword = ConcatByte(userPassword, this.separator_r_n);
+
             sendToServer(userPassword);
-            //TODO: risposta da server??
+            string risp = strRecCommFromServer();
+
+            switch (risp)
+            {
+                case commloggedok:
+                    MyLogger.print("Nuovo utente creato con successo");
+                    return;
+                    break;
+                case commDBERROR:
+                    MyLogger.print("Utente non valido, ritentare con un'altro utente");
+                    throw new AbortLogicThreadException();
+                    break;
+                default:
+                    if(risp.Substring(0,5) == commNameTooLongPARTIAL)
+                    {
+                        //nome utente troppo lungo.
+                        int maxLength = Int32.Parse(risp.Substring(5, 3));
+                        mainWindow.Dispatcher.Invoke(mainWindow.DelShowErrorMsg, "Errore, nome utente troppo lungo. Max: " + maxLength + " caratteri");
+                        throw new AbortLogicThreadException();
+                    }
+                    else
+                        throw new UnknownServerResponseException();
+                    break;
+            }
+            
         }
 
         private void newConnection()
@@ -322,9 +367,19 @@ namespace ProgettoClient
             sendToServer(commDeleteFile);
             waitForAck(commCmdAckFromServer);
 
-            sendToServer(rf.toSendFormat());
+            sendToServer(rf.nameAndPath);
+
             waitForAck(commInfoAckFromServer);
             MyLogger.debug("deleted\n");
+            string res = strRecCommFromServer();
+            if (res == commDELETED)
+            {
+                MyLogger.print("file deleted correctly");
+            }
+            if (res == commNOTDEL)
+            {
+                MyLogger.print("not existing file");
+            }
         }
 
         internal void syncUpdatedFile(RecordFile rf)
@@ -360,6 +415,20 @@ namespace ProgettoClient
 
         public RecoverInfos askForRecoverInfo()
         {
+            //todo: remove
+            if (DEBUGGING)
+            {
+                RecoverInfos risdbg = new RecoverInfos();
+                risdbg.addRawRecord("C:\\DATI\\poli\\Programmazione di Sistema\\progetto_client\\cartella_test\\1\r\n000000111111111100000000000000000000000000000000", 1);
+                risdbg.addRawRecord("C:\\DATI\\poli\\Programmazione di Sistema\\progetto_client\\cartella_test\\2\r\n000000111111111100000000000000000000000000000000", 2);
+                risdbg.addRawRecord("C:\\DATI\\poli\\Programmazione di Sistema\\progetto_client\\cartella_test\\3\r\n000000111111111100000000000000000000000000000000", 3);
+                risdbg.addRawRecord("C:\\DATI\\poli\\Programmazione di Sistema\\progetto_client\\cartella_test\\4\r\n000000111111111100000000000000000000000000000000", 4);
+                risdbg.addRawRecord("C:\\DATI\\poli\\Programmazione di Sistema\\progetto_client\\cartella_test\\5\r\n000000111111111100000000000000000000000000000000", 5);
+                risdbg.addRawRecord("C:\\DATI\\poli\\Programmazione di Sistema\\progetto_client\\cartella_test\\6\r\n000000111111111100000000000000000000000000000000", 5);
+                risdbg.addRawRecord("C:\\DATI\\poli\\Programmazione di Sistema\\progetto_client\\cartella_test\\7\r\n000000111111111100000000000000000000000000000000", 7);
+                risdbg.addRawRecord("percorso\r\n000000111111111100000000000000000000000000000000", 1);
+                return risdbg;
+            }
             sendToServer(commRecoverInfo);
             waitForAck(commCmdAckFromServer);
             //TODO!:
@@ -447,7 +516,7 @@ namespace ProgettoClient
                 byte[] file = File.ReadAllBytes(f.nameAndPath);
                 //byte[] fileBuffer = new byte[file.Length];
                 //serverStream.Write(file.ToArray(), 0, fileBuffer.GetLength(0));
-                serverStream.Write(file.ToArray(), 0, file.Length); //TODO:gestire casi di errore, tra cui impossibile aprire il file ecc...
+                serverStream.Write(file.ToArray(), 0, file.Length);
             }
             catch (Exception ex)
             {
@@ -472,7 +541,9 @@ namespace ProgettoClient
                 return;
             }
 
-            //TODO?: eliminare da recoverRecords. da recoverEntryList è già eliminato.
+            //elimina da recoverRecords e da recoverEntryList
+            mainWindow.Dispatcher.Invoke(mainWindow.DelCleanRecoveredEntryList);
+
             MyLogger.print("received\n");
         }
 
@@ -524,17 +595,34 @@ namespace ProgettoClient
             FileStream fout;
             try
             {
-                fout = File.Open(rr.rf.nameAndPath, FileMode.CreateNew);
+                if (File.Exists(rr.rf.nameAndPath))
+                {
+                    //chiede se sovrascrivere
+                    bool wantOverwrite = (bool)mainWindow.Dispatcher.Invoke(mainWindow.DelAskOverwrite);
+                    if (wantOverwrite)
+                    {
+                        fout = File.Open(rr.rf.nameAndPath, FileMode.Create);
+                    }
+                    else
+                    {
+                        throw new IOException("need to save with name");
+                    }
+                }
+                else
+                {
+                    fout = File.Open(rr.rf.nameAndPath, FileMode.CreateNew);
+                }
             }
             catch (IOException e)
             {
                 //file omonimo esiste già, oppure directory not found. apro una dialog di salvataggio
                 Microsoft.Win32.SaveFileDialog sfd = new Microsoft.Win32.SaveFileDialog();
-                sfd.FileName = rr.rf.nameAndPath;
+                sfd.InitialDirectory = mainWindow.settings.getRootFolder();
+                sfd.FileName = rr.rf.getJustName();
                 Nullable<bool> result = sfd.ShowDialog();
                 if (result == true)
                 {
-                    fout = File.Open(sfd.FileName, FileMode.CreateNew);
+                    fout = File.Open(sfd.FileName, FileMode.Create);
                 }
                 else
                 {
@@ -560,27 +648,13 @@ namespace ProgettoClient
         }
 
 
-        internal void RecoverBackupVersion(int versionToRecover)
+        internal void RecoverBackupVersion(MainWindow.RecoveringQuery_st recQuery)
         {
             throw new NotImplementedException();
             MyLogger.print("recovering backup version: " + versionToRecover);
             sendToServer(commRecoverBackup);
             waitForAck(commCmdAckFromServer);
-
-            //try
-            //{
-            //    //RecBackup(versionToRecover);
-            //    //invio numero versione
-            //    //ricezione di un file alla volta ma in che ordine?
-            //    throw new NotImplementedException;
-            //}
-            //catch ()
-            //{
-            //    return;
-            //}
-
-            ////TODO?: eliminare da recoverRecords. da recoverEntryList è già eliminato.
-            MyLogger.print(" received\n");
+            //TODO!
         }
 
         
@@ -604,5 +678,3 @@ namespace ProgettoClient
 
 
 //TODO:test all SessionManager
-
-//TODO?: quando usare funzione server di invio (client->server) backup completo?

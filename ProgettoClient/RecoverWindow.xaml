@@ -7,7 +7,7 @@
             <ColumnDefinition/>
             <ColumnDefinition Width="0*"/>
         </Grid.ColumnDefinitions>
-        <Button x:Name="buttRecover" Content="Recover files" HorizontalAlignment="Left" Margin="505,394,0,0" VerticalAlignment="Top" Width="75" Click="buttRecover_click" IsEnabled="False"/>
+        <Button x:Name="buttRecover" Content="Recover file" HorizontalAlignment="Left" Margin="396,403,0,0" VerticalAlignment="Top" Width="75" Click="buttRecover_click" IsEnabled="False"/>
         <ListView x:Name="recoverListView" HorizontalAlignment="Left" Height="389" VerticalAlignment="Top" Width="607" SelectionMode="Single">
             <ListView.View>
                 <GridView>
@@ -17,7 +17,9 @@
             </ListView.View>
         </ListView>
         <Button x:Name="DEBUGBUTT" Content="DEBUG" HorizontalAlignment="Left" Margin="505,425,0,0" VerticalAlignment="Top" Width="75" Click="DEBUGBUTT_Click"/>
-        <ComboBox x:Name="comboRecoverViewMode" HorizontalAlignment="Left" Margin="137,406,0,0" VerticalAlignment="Top" Width="228" SelectionChanged="comboRecoverViewMode_SelectionChanged" />
+        <ComboBox x:Name="comboRecoverViewMode" HorizontalAlignment="Left" Margin="10,403,0,0" VerticalAlignment="Top" Width="228" SelectionChanged="comboRecoverViewMode_SelectionChanged" />
+        <Button x:Name="buttRecoverAll" Content="Recover All Files" HorizontalAlignment="Left" Margin="488,403,0,0" VerticalAlignment="Top" Width="93" Click="buttRecoverAll_click" IsEnabled="False"/>
+        <!--SelectionChanged="comboRecoverViewMode_SelectionChanged"-->
 
     </Grid>
 </Window>

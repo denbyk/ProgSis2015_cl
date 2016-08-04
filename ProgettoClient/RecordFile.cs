@@ -26,7 +26,7 @@ namespace ProgettoClient
             if (hash.Length != 32) throw new ArgumentException("hash.length != 32!");
             this.hash = hash;
             this.size = size;
-            this.lastModified = lastModified;
+            this.lastModified = new System.DateTime(lastModified.Year, lastModified.Month, lastModified.Day, lastModified.Hour, lastModified.Minute, lastModified.Second);
         }
 
         public RecordFile(System.IO.FileInfo fi)
@@ -34,7 +34,7 @@ namespace ProgettoClient
             nameAndPath = fi.FullName;
             hash = calcHash();
             size = fi.Length;
-            lastModified = fi.LastWriteTime;
+            lastModified = new System.DateTime(fi.LastWriteTime.Year, fi.LastWriteTime.Month, fi.LastWriteTime.Day, fi.LastWriteTime.Hour, fi.LastWriteTime.Minute, fi.LastWriteTime.Second);
         }
 
         private string calcHash()
@@ -64,7 +64,7 @@ namespace ProgettoClient
                 return false;            
             if (nameAndPath.Equals(r.nameAndPath) &&
                     hash.Equals(r.hash) &&
-                    size.Equals(r.size) &&
+                    //size.Equals(r.size) && il size può essere a -1
                     lastModified.Equals(r.lastModified))
                     return true;
             return false;
@@ -112,6 +112,13 @@ namespace ProgettoClient
         public override string ToString()
         {
             return "RecordFile: " + nameAndPath + " " + hash + " " + size + " " + lastModified;
+        }
+
+        public string getJustName()
+        {
+            char[] sep = { '\\' };
+            string[] list = nameAndPath.Split(sep);
+            return list.Last<string>();
         }
 
     }

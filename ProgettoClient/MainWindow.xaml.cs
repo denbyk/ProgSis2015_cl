@@ -34,11 +34,20 @@ namespace ProgettoClient
         public delegate bool AskNewAccount_dt();
         public AskNewAccount_dt DelAskNewAccount;
 
-        internal delegate void ShowRecoverInfos_dt(RecoverInfos recInfo);
-        internal ShowRecoverInfos_dt DelShowRecoverInfos;
+        public delegate bool AskOverwriteFile_dt();
+        public AskOverwriteFile_dt DelAskOverwrite;
+
+        internal delegate void SetRecoverInfos_dt(RecoverInfos recInfo);
+        internal SetRecoverInfos_dt DelSetRecoverInfos;
 
         internal delegate void DelSetInterfaceLoggedMode_dt(interfaceMode_t im);
         internal DelSetInterfaceLoggedMode_dt DelSetInterfaceLoggedMode;
+
+        public delegate void cleanRecoveredEntryList_dt();
+        public cleanRecoveredEntryList_dt DelCleanRecoveredEntryList;
+
+        public delegate void ShowErrorMsg_dt(string s);
+        public ShowErrorMsg_dt DelShowErrorMsg;
 
         private const string SETTINGS_FILE_PATH = "Settings.bin";
         //TODO change this
@@ -140,6 +149,36 @@ namespace ProgettoClient
             }
         }
 
+        public struct RecoveringQuery_st
+        {
+            public readonly int versionToRecover;
+            public readonly string recoveringFolderPath;
+
+            public RecoveringQuery_st(int versionToRecover, string recoveringFolderPath)
+            {
+                this.versionToRecover = versionToRecover;
+                this.recoveringFolderPath = recoveringFolderPath;
+            }
+        }
+        private RecoveringQuery_st _RecoveringQuery;
+        public RecoveringQuery_st RecoveringQuery
+        {
+            get
+            {
+                lock (this)
+                {
+                    return _RecoveringQuery;
+                }
+            }
+            set
+            {
+                lock (this)
+                {
+                    _RecoveringQuery = value;
+                }
+            }
+        }
+
         private bool _terminateLogicThread = false;
         private bool TerminateLogicThread
         {
@@ -155,25 +194,6 @@ namespace ProgettoClient
                 lock (this)
                 {
                     _terminateLogicThread = value;
-                }
-            }
-        }
-
-        private RecoverInfos _recInfos;
-        internal RecoverInfos recInfos
-        {
-            get
-            {
-                lock (this)
-                {
-                    return _recInfos;
-                }
-            }
-            set
-            {
-                lock (this)
-                {
-                    _recInfos = value;
                 }
             }
         }
@@ -234,7 +254,7 @@ namespace ProgettoClient
                 }
             }
         }
-
+        /*
         private int _versionToRecover;
         internal int versionToRecover
         {
@@ -253,7 +273,7 @@ namespace ProgettoClient
                 }
             }
         }
-
+        */
         internal enum interfaceMode_t
         {
             logged,
@@ -291,7 +311,7 @@ namespace ProgettoClient
                     buttLogin.Content = "Login";
                     buttStartStopAutoSync.IsEnabled = false;
                     buttManualStartStopSync.IsEnabled = false;
-                    buttRecover.IsEnabled = false;
+                    //buttRecover.IsEnabled = false;
                     textboxCycleTime.IsEnabled = false;
 
                     _interfaceMode = value;
@@ -314,7 +334,7 @@ namespace ProgettoClient
             }
         }
 
-        private Settings settings;
+        public Settings settings;
         private SessionManager sm;
         private RecoverWindow recoverW;
         private bool firstConnSync;
@@ -328,8 +348,11 @@ namespace ProgettoClient
             //init delegates
             DelWriteLog = writeInLog_RichTextBox;
             DelAskNewAccount = askNewAccount;
-            DelShowRecoverInfos = showRecoverInfos;
+            DelSetRecoverInfos = setRecoverInfos;
             DelSetInterfaceLoggedMode = SetInterfaceLoggedMode;
+            DelCleanRecoveredEntryList = cleanRecoveredEntryList;
+            DelAskOverwrite = AskOverwriteFile;
+            DelShowErrorMsg = ShowErrorMsg;
 
             //init accessory classes
             MyLogger.init(this);
@@ -354,6 +377,41 @@ namespace ProgettoClient
             //DEBUG: lo fa partire il tasto login in realtà
             //logicThread = new Thread(logicThreadStart);
             //logicThread.Start(); 
+        }
+
+        private void ShowErrorMsg(string msg)
+        {
+            //"Errore, nome utente troppo lungo"
+            string messageBoxText = msg;
+            string caption = "Errore";
+            MessageBoxButton button = MessageBoxButton.OK;
+            MessageBoxImage icon = MessageBoxImage.Error;
+
+            // Display message box
+            MessageBox.Show(messageBoxText, caption, button, icon);
+        }
+
+        private bool AskOverwriteFile()
+        {
+            // Configure the message box to be displayed
+            string messageBoxText = "File esistente. Si desidera sovrascriverlo?";
+            string caption = "Word Processor";
+            MessageBoxButton button = MessageBoxButton.YesNo;
+            MessageBoxImage icon = MessageBoxImage.Warning;
+
+            // Display message box
+            MessageBoxResult result = MessageBox.Show(messageBoxText, caption, button, icon);
+
+            // Process message box results
+            switch (result)
+            {
+                case MessageBoxResult.Yes:
+                    return true;
+                case MessageBoxResult.No:
+                    return false;
+            }
+
+            return false;
         }
 
         private void SetInterfaceLoggedMode(interfaceMode_t im)
@@ -429,6 +487,12 @@ namespace ProgettoClient
             }
 
             return false;
+        }
+
+
+        private void cleanRecoveredEntryList()
+        {
+            recoverW.cleanRecovered();
         }
 
         private void ManualSync()
@@ -515,7 +579,7 @@ namespace ProgettoClient
         /// <summary>
         /// permette al logic thread di procedere
         /// </summary>
-        private void MakeLogicThreadCycle()
+        public void MakeLogicThreadCycle()
         {
             if (!logicThread.IsAlive && !TerminateLogicThread)
             {
@@ -540,11 +604,14 @@ namespace ProgettoClient
 
         private void AbortTimerHandler(object sender, EventArgs e)
         {
-            MyLogger.print("DA CANCELLARE");
+            //MyLogger.print("DA CANCELLARE");
             CheckForAbortSignaled = true; //caso di checkForAbort, non di SyncNowEvent. no needToSync
             CycleNowEvent.Set(); //permette al logicThread di procedere.
             AbortTimer.Start();
         }
+
+        
+
 
         /*---event handlers & interface modifier------------*/
 
@@ -613,17 +680,18 @@ namespace ProgettoClient
 
         private void buttRecover_Click(object sender, RoutedEventArgs e)
         {
+            recoverW = new RecoverWindow(this);
+            recoverW.Owner = this;
+
             needToAskRecoverInfo = true;
             MakeLogicThreadCycle();
 
-            recoverW = new RecoverWindow(this);
-            recoverW.Owner = this;
             recoverW.ShowDialog();
         }
 
-        private void showRecoverInfos(RecoverInfos recInfo)
+        private void setRecoverInfos(RecoverInfos recInfo)
         {
-            recoverW.showRecoverInfos(recInfo);
+            recoverW.setRecoverInfos(recInfo);
         }
 
         private void buttLoginLogout_Click(object sender, RoutedEventArgs e)
@@ -636,6 +704,8 @@ namespace ProgettoClient
             }
             else
             {
+                SetInterfaceLoggedMode(interfaceMode_t.notLogged);
+                sm.logout();
                 LogicThreadShutDown();
             }
         }
@@ -692,7 +762,7 @@ namespace ProgettoClient
         {
             MyLogger.debug("LogicThread starting");
             //TODO:DEBUG, DA TOGLIERE LA PROSSIMA RIGA
-            //this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.logged); //DEBUG
+            this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.logged); //DEBUG
 
             try //catch errori non recuperabili per il thread
             {
@@ -708,20 +778,21 @@ namespace ProgettoClient
                 //try //catch errori che richiedono riconnessione
                 //{ NON CI SONO ECCEZIONI CHE MERITINO DI RICONNETTERSI SENZA DARE modo a utente di cambiare qualche info di login
                 //gestione del login
-                sm.login(settings.getUser(), settings.getPassw());
+//                sm.login(settings.getUser(), settings.getPassw());
                 //connected = true;
+                //TODO:togliere prossima riga
 
                 //selezione cartella
-                sm.setRootFolder(settings.getRootFolder());
+//                sm.setRootFolder(settings.getRootFolder());
 
                 //attiva modalità logged nella UI
                 this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.logged);
 
                 //voglio iniziare con una sync
-                needToSync = true;
+//                needToSync = true;
 
                 //è la prima sync per questa connessione
-                firstConnSync = true;
+//                firstConnSync = true;
 
                 //ciclo finchè la connessione è attiva. si esce solo con eccezione o con chiusura thread logico (anch'essa un'eccezione).
                 while (true)
@@ -737,39 +808,42 @@ namespace ProgettoClient
                             //init del dirMonitor
                             d = new DirMonitor(settings.getRootFolder(), sm);
                         }
-                        else
+                        else //non è la prima connessione
                         {
                             //scandisco root folder
                             d.scanDir();
+
+                            //sincronizzo tutte le modifiche
+                            SyncAll();
                         }
-                        SyncAll();
                         needToSync = false;
                     }
+
                     //verifica se deve richiedere l'intero ultimo backup
                     if (needToRecoverWholeBackup)
                     {
-                        /*
-                        sm.RecoverBackupVersion();
+                        sm.RecoverBackupVersion(RecoveringQuery);
                         needToRecoverWholeBackup = false;
-                        */
                     }
+
                     //verifica se deve richiedere dati per ripristino di file vecchi
                     if (needToAskRecoverInfo)
                     {
-                        recInfos = sm.askForRecoverInfo();
+                        var recInfos = sm.askForRecoverInfo();
                         needToAskRecoverInfo = false;
-                        if (recoverW.IsVisible)
-                        {
-                            recoverW.Dispatcher.Invoke(DelShowRecoverInfos, recInfos);
-                        }
+
+                        System.Diagnostics.Debug.Assert(recoverW != null);
+
+                        recoverW.Dispatcher.Invoke(DelSetRecoverInfos, recInfos);
                     }
+
                     //recupera recoverRecord
                     if (needToAskForFileToRecover)
                     {
-                        needToAskForFileToRecover = false;
-
                         //recupera file
                         sm.askForSingleFile(fileToRecover);
+
+                        needToAskForFileToRecover = false;
                     }
                     WaitForSyncTime();
                 }
@@ -808,10 +882,11 @@ namespace ProgettoClient
             catch (Exception e) //eccezione critica.
             {
                 MyLogger.line();
-                MyLogger.print(e.Message);
+                MyLogger.debug(e.Message);
                 MyLogger.line();
                 MyLogger.debug("LogicThread closing");
             }
+
             if (!TerminateLogicThread)
             {
                 //setta la UI in modalità unlocked a meno che non sia TerminateLogicThread settata, 
@@ -868,7 +943,7 @@ namespace ProgettoClient
             foreach (var f in buffer)
             {
                 sm.syncDeletedFile(f);
-                d.confirmSync(f);
+                d.confirmSync(f, true);
             }
         }
 

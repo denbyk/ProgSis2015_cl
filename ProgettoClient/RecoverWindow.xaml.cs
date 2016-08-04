@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Ookii.Dialogs.Wpf;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -22,18 +23,34 @@ namespace ProgettoClient
     public partial class RecoverWindow : Window
     {
         List<string> RecoverViewModeList;
+        //contiene int delle versioni da recuperare corrispondeti alle RecoverViewModeList (non comprende la posizione 0 "file da tutte le versioni")
+        List<int> RecoverViewModeListInt; 
+
         List<recoverListEntry> RecoverEntryList;
         MainWindow mainW;
         int versionToDisplay; //-1 se display di file da tutte le versioni
-        enum RecoverMode
-        {
-            RecoverSelected,
-            RecoverAll
-        }
-        RecoverMode rmode;
+        recoverListEntry RListRecoveringEntry;
 
-        const string cnstRecoverAllStr = "Recover all";
-        const string cnstRecoverFileStr = "Recover file";
+        //todo? forse recInfo è già thread-safe senza i lock xkè usato da un solo thread?
+        private RecoverInfos _recInfos;
+        internal RecoverInfos recInfos
+        {
+            get
+            {
+                lock (this)
+                {
+                    return _recInfos;
+                }
+            }
+            set
+            {
+                lock (this)
+                {
+                    _recInfos = value;
+                }
+            }
+        }
+
 
         public RecoverWindow(MainWindow mainW)
         {
@@ -43,80 +60,100 @@ namespace ProgettoClient
             RecoverEntryList.Add( new recoverListEntry() { Name = "Caricamento in corso...", lastMod = ""});
             recoverListView.ItemsSource = RecoverEntryList;
 
+            recInfos = new RecoverInfos();
             RecoverViewModeList = new List<string> { "file da tutte le versioni" };
             comboRecoverViewMode.ItemsSource = RecoverViewModeList;
             //seleziono prima stringa (file da tutte le versioni)
             comboRecoverViewMode.SelectedIndex = 0;
             versionToDisplay = -1;
-            rmode = RecoverMode.RecoverSelected;
             this.buttRecover.IsEnabled = false;
         }
 
         private void buttRecover_click(object sender, RoutedEventArgs e)
         {
-            if(rmode == RecoverMode.RecoverSelected)
-            {
-                RecoverFile();
-            }
-            else
-            {
-                recoverWholeBackup();
-            }
+            RecoverFile();
         }
 
         private void recoverWholeBackup()
         {
+            string path;
             //verifica che utente sia sicuro
-            MessageBoxResult result = MessageBox.Show("this procedure may overwrite some files. Are you sure you want to proceed?", "Confirmation", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-            if (result != MessageBoxResult.Yes)
+            MessageBoxResult result = MessageBox.Show("Some files may be overwritten. Do you want to save in another folder?", "Confirmation", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            switch (result)
             {
-                //non fa niente
-                return;
+                case MessageBoxResult.Yes:
+                    //scegliere cartella in cui salvare i backup
+                    VistaFolderBrowserDialog folderDiag = new VistaFolderBrowserDialog();
+                    folderDiag.ShowDialog();
+                    System.Diagnostics.Debug.Assert(versionToDisplay != -1);
+                    path = folderDiag.SelectedPath;
+                    break;
+                case MessageBoxResult.No:
+                    path = ""; //cioè usa i path originali
+                    break;
+                default:
+                    //non fare niente
+                    return;
+                    break;
             }
-            //ottieni versione selezionata
-            //TODO: gestirlo in comboSelectionChange
-            int selectedVersion = -100;
-            //affida a thread logico compito di recuperare il file 
-            //salvo versionToRecover nella proprietò thread-safe di mainWindow.
-            mainW.versionToRecover = selectedVersion;
-            //sblocco il logicThread.
             mainW.needToRecoverWholeBackup = true;
-            mainW.CycleNowEvent.Set();
+            mainW.RecoveringQuery = new MainWindow.RecoveringQuery_st(versionToDisplay, path);
+            mainW.MakeLogicThreadCycle();
         }
 
         private void RecoverFile()
         {
             //ottieni elemento selezionato
-            recoverListEntry rles = (recoverListView.SelectedItem as recoverListEntry);
+            RListRecoveringEntry = (recoverListView.SelectedItem as recoverListEntry);
             //affida a thread logico compito di recuperare il file 
             //salvo recoverRecord nella proprietò thread-safe di mainWindow.
-            mainW.fileToRecover = rles.rr;
+            mainW.fileToRecover = RListRecoveringEntry.rr;
             //sblocco il logicThread.
             mainW.needToAskForFileToRecover = true;
-            mainW.CycleNowEvent.Set();
+            mainW.MakeLogicThreadCycle();
+        }
+
+        public void cleanRecovered()
+        {
+            //TODO!: solo se recover effettuato!
             //lo rimuovo dalla lista di RecoverEntry
-            RecoverEntryList.Remove(rles);
+            RecoverEntryList.Remove(RListRecoveringEntry);
             //rimuovo anche dall'oggetto RecoverInfos in mainW.
-            mainW.recInfos.removeRecoverRecord(rles.rr);
+            //todo? lo fa il thread sbagliato? o chissene?
+            recInfos.removeRecoverRecord(RListRecoveringEntry.rr);
             //refresh della listView
             recoverListView.Items.Refresh();
         }
 
-        internal void showRecoverInfos(RecoverInfos recInfos)
+        internal void setRecoverInfos(RecoverInfos recInfos)
+        {
+            this.recInfos = recInfos;
+            showRecoverInfos();
+            updateRecoverViewModes();
+        }
+
+        private void updateRecoverViewModes()
+        {
+            IEnumerable<int> vnumbs = recInfos.getBackupVersionNumbers().Distinct();
+            foreach (var n in vnumbs)
+            {
+                RecoverViewModeList.Add(n.ToString());
+            }
+            RecoverViewModeListInt = vnumbs.ToList();
+            //comboRecoverViewMode.ItemsSource = RecoverViewModeList;
+        }
+
+        private void showRecoverInfos()
         {
             RecoverEntryList.Clear();
             //TODO: implementare le due rappresentazioni: per files e per versioni di backup.
-            if(versionToDisplay == -1)
+            if (versionToDisplay == -1)
             {
-                ShowFilesFromEveryBackup(recInfos);
-                rmode = RecoverMode.RecoverSelected;
-                buttRecover.Content = cnstRecoverFileStr;
+                ShowFilesFromEveryBackup();
             }
             else
             {
-                ShowFilesFromSpecificBackup(recInfos, versionToDisplay);
-                rmode = RecoverMode.RecoverAll;
-                buttRecover.Content = cnstRecoverAllStr;
+                ShowFilesFromSpecificBackup(versionToDisplay);
             }
 
             recoverListView.Items.Refresh();
@@ -124,7 +161,7 @@ namespace ProgettoClient
         }
 
 
-        private void ShowFilesFromSpecificBackup(RecoverInfos recInfos, int versionToDisplay)
+        private void ShowFilesFromSpecificBackup(int versionToDisplay)
         {
             List<RecoverRecord> rrlist = recInfos.getVersionSpecificRecoverList(versionToDisplay);
             foreach (RecoverRecord rec in rrlist)
@@ -133,9 +170,8 @@ namespace ProgettoClient
             }
         }
 
-        private void ShowFilesFromEveryBackup(RecoverInfos recInfos)
+        private void ShowFilesFromEveryBackup()
         {
-
             List<RecoverRecord> rrlist = recInfos.getRecoverUniqueList();
             foreach (RecoverRecord rec in rrlist)
             {
@@ -152,28 +188,28 @@ namespace ProgettoClient
         /// <param name="e"></param>
         private void DEBUGBUTT_Click(object sender, RoutedEventArgs e)
         {
-            //test vari generali
-
-            //Microsoft.Win32.SaveFileDialog sfd = new Microsoft.Win32.SaveFileDialog();
-            //string s = "C:\\dati\\ciao.txt";
-            //string[] sTot = MyConverter.extractNameAndFolder(s);
-            //sfd.InitialDirectory = sTot[0];
-            //sfd.FileName = sTot[1];
-            //bool? result = sfd.ShowDialog();
-            //if (result == true)
-            //{
-            //    FileStream fout = File.Open(sfd.FileName, FileMode.CreateNew);
-            //}
-            //else
-            //{
-            //    //gestire annullamento
-            //    throw new NotImplementedException();
-            //}
+            
         }
 
         private void comboRecoverViewMode_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            throw new NotImplementedException();
+            int i = comboRecoverViewMode.SelectedIndex;
+            if (i == 0)
+            {
+                versionToDisplay = -1; //così la prima è -1
+                buttRecoverAll.IsEnabled = false;
+            }
+            else
+            {
+                versionToDisplay = RecoverViewModeListInt[i-1]; //caso 0 escluso
+                buttRecoverAll.IsEnabled = true;
+            }
+            showRecoverInfos();
+        }
+
+        private void buttRecoverAll_click(object sender, RoutedEventArgs e)
+        {
+            recoverWholeBackup();
         }
     }
 

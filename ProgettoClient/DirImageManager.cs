@@ -86,9 +86,12 @@ namespace ProgettoClient
             }
         }
 
-        internal void confirmSync(RecordFile rf)
+        internal void confirmSync(RecordFile rf, bool deleting)
         {
-            dirImage.Add(rf.nameAndPath, rf);
+            if (!deleting)
+                dirImage.Add(rf.nameAndPath, rf);
+            else
+                dirImage.Remove(rf.nameAndPath);
         }
 
         public HashSet<RecordFile> getDeleted() //?? posso tornare l'oggetto private??

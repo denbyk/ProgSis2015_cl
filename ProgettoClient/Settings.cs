@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Runtime.Serialization;
+using System.IO;
 
 namespace ProgettoClient
 {
@@ -31,7 +32,7 @@ namespace ProgettoClient
         public string getIP() { return indIP; }
         public int getPorta() { return porta; }
 
-        public void setRootFolder(string RootFolder) { this.RootFolder = RootFolder; }
+        public void setRootFolder(string RootFolder) { this.RootFolder = RootFolder.TrimEnd(Path.DirectorySeparatorChar); }
         public void setCycleTime(double CycleTime) { this.CycleTime = CycleTime; }
         public void setAutoSyncToggle(bool AutoSyncToggle) { this.AutoSyncToggle = AutoSyncToggle; }
         public void setUser(string User) { this.User = User; }
@@ -41,7 +42,7 @@ namespace ProgettoClient
 
         public Settings(string RootFolder, double CycleTime, bool AutoSyncToggle, string User, string Passw, string indIP, int porta)
         {
-            this.RootFolder = RootFolder;
+            setRootFolder(RootFolder);
             this.CycleTime = CycleTime;
             this.AutoSyncToggle = AutoSyncToggle;
             this.User = User;

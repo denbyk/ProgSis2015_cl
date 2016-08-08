@@ -133,29 +133,6 @@ namespace ProgettoClient
             }
         }
 
-        /*VERSIONE VECCHIA, SALVATAGGIO SU DISCO.*/
-        ////carica la loadDirImage da disco. se riceve un eccezione carica la versione _old. 
-        ////se non riesce allora crea una imageDir vuota.
-        ////differenziare per varie cartelle ?? se cambio cartella perdo i dati della cartella prima?
-        //private void loadDirImage()
-        //{
-        //    //controllo di caricare la versione nuova e non un eventuale versione vecchia.
-        //    FileStream fin;
-        //    try
-        //    {
-        //        fin = new FileStream(IMAGE_FILE_PATH, FileMode.Open);
-        //        dirImage = (Dictionary<string, RecordFile>)formatter.Deserialize(fin);
-        //        fin.Close();
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        //in caso di file danneggiato o simili considero che precedente stato della cartella fosse tutta vuota.
-        //        MyLogger.print("impossibile accedere a " + IMAGE_FILE_PATH + ". " + e.Message);
-        //        dirImage = new Dictionary<string, RecordFile>();
-        //        //throw;
-        //    }
-        //}
-
         public void storeDirImage()
         {
             //TODO:?prima scrivo quella nuova, poi elimino quella vecchia dal disco.

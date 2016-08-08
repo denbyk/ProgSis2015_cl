@@ -97,7 +97,7 @@ namespace ProgettoClient
                     break;
             }
             mainW.needToRecoverWholeBackup = true;
-            mainW.RecoveringQuery = new MainWindow.RecoveringQuery_st(versionToDisplay, path);
+            mainW.RecoveringQuery = new MainWindow.RecoveringQuery_st(recInfos, versionToDisplay, path);
             mainW.MakeLogicThreadCycle();
         }
 
@@ -188,7 +188,6 @@ namespace ProgettoClient
         /// <param name="e"></param>
         private void DEBUGBUTT_Click(object sender, RoutedEventArgs e)
         {
-            
         }
 
         private void comboRecoverViewMode_SelectionChanged(object sender, SelectionChangedEventArgs e)

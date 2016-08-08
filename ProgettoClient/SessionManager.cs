@@ -7,6 +7,7 @@ using System.Security.Cryptography;
 using System.Net.Sockets;
 using System.IO;
 using System.Runtime.Serialization;
+using System.Windows;
 
 namespace ProgettoClient
 {
@@ -231,7 +232,7 @@ namespace ProgettoClient
                     {
                         //nome utente troppo lungo.
                         int maxLength = Int32.Parse(risp.Substring(5, 3));
-                        mainWindow.Dispatcher.Invoke(mainWindow.DelShowErrorMsg, "Errore, nome utente troppo lungo. Max: " + maxLength + " caratteri");
+                        mainWindow.Dispatcher.Invoke(mainWindow.DelShowOkMsg, "Errore, nome utente troppo lungo. Max: " + maxLength + " caratteri");
                         throw new AbortLogicThreadException();
                     }
                     else
@@ -534,7 +535,7 @@ namespace ProgettoClient
 
             try
             {
-                RecFileContent(rr);
+                SaveSingleFile(rr);
             }
             catch (CancelFileRequestException c)
             {
@@ -590,7 +591,7 @@ namespace ProgettoClient
             }
         }
 
-        private void RecFileContent(RecoverRecord rr)
+        private void SaveSingleFile(RecoverRecord rr)
         {
             FileStream fout;
             try
@@ -598,7 +599,9 @@ namespace ProgettoClient
                 if (File.Exists(rr.rf.nameAndPath))
                 {
                     //chiede se sovrascrivere
-                    bool wantOverwrite = (bool)mainWindow.Dispatcher.Invoke(mainWindow.DelAskOverwrite);
+                    string message = "file già esistente. si desidera sovrascriverlo?";
+                    string caption = "caption";
+                    bool wantOverwrite = (bool)mainWindow.Dispatcher.Invoke(mainWindow.DelYesNoQuestion, message, caption);
                     if (wantOverwrite)
                     {
                         fout = File.Open(rr.rf.nameAndPath, FileMode.Create);
@@ -610,12 +613,13 @@ namespace ProgettoClient
                 }
                 else
                 {
+                    Directory.CreateDirectory(System.IO.Path.GetDirectoryName(rr.rf.nameAndPath));
                     fout = File.Open(rr.rf.nameAndPath, FileMode.CreateNew);
                 }
             }
             catch (IOException e)
             {
-                //file omonimo esiste già, oppure directory not found. apro una dialog di salvataggio
+                //file omonimo esiste già o altri errori nell'aprire il file. apro una dialog di salvataggio
                 Microsoft.Win32.SaveFileDialog sfd = new Microsoft.Win32.SaveFileDialog();
                 sfd.InitialDirectory = mainWindow.settings.getRootFolder();
                 sfd.FileName = rr.rf.getJustName();
@@ -631,6 +635,13 @@ namespace ProgettoClient
                 }
             }
 
+            RecFileContent(rr, fout);
+
+            fout.Close();
+        }
+
+        private void RecFileContent(RecoverRecord rr, FileStream fout)
+        {
             //invio al server della richiesta per il file specifico.
             //"file.txt\r\n121\r\n"
             sendToServer(rr.rf.nameAndPath + "\r\n" + rr.backupVersion.ToString() + "\r\n");
@@ -642,22 +653,67 @@ namespace ProgettoClient
             {
                 fout.Write(buffer, 0, bytesRead);
             }
-
-            fout.Close();
-
         }
 
 
-        internal void RecoverBackupVersion(MainWindow.RecoveringQuery_st recQuery)
+
+        internal void RecoverSelectedVersion(MainWindow.RecoveringQuery_st recQuery)
         {
-            throw new NotImplementedException();
-            MyLogger.print("recovering backup version: " + versionToRecover);
+            int version = recQuery.versionToRecover;
+            MyLogger.print("recovering backup version: " + recQuery.versionToRecover);
             sendToServer(commRecoverBackup);
             waitForAck(commCmdAckFromServer);
-            //TODO!
+            //seleziono versione
+            sendToServer(recQuery.versionToRecover.ToString());
+            //TODO? RISPOSTA DA SERVER?
+            //ricevo files associati ai recoverRecords
+
+            try
+            {
+                foreach (RecoverRecord rr in recQuery.recInfos.getVersionSpecificRecoverList(version))
+                {
+                    string newPathAndName;
+                    if (recQuery.recoveringFolderPath != "")
+                    {
+                        System.Diagnostics.Debug.Assert(rr.rf.nameAndPath.Contains(mainWindow.settings.getRootFolder()));
+                        //elimina la rootFolder. lascia // iniziale
+                        string localPath = rr.rf.nameAndPath.Substring(mainWindow.settings.getRootFolder().Length);
+                        newPathAndName = recQuery.recoveringFolderPath.TrimEnd(Path.AltDirectorySeparatorChar) + localPath;
+                    }
+                    else
+                    {
+                        newPathAndName = rr.rf.nameAndPath;
+                    }
+
+                    FileStream fout;
+                    Directory.CreateDirectory(System.IO.Path.GetDirectoryName(newPathAndName));
+                    try
+                    {
+                        fout = new FileStream(newPathAndName, FileMode.Create);
+                    }
+                    catch(IOException e)
+                    {
+                        //se file è protetto ne crea una copia a fianco
+                        fout = new FileStream(newPathAndName + "-restoredCopy", FileMode.Create);
+                    }
+
+                    RecFileContent(rr, fout);
+                    fout.Close();
+                }
+            }
+            catch(Exception e)
+            {
+                MyLogger.print("ripristino fallito");
+                mainWindow.Dispatcher.Invoke(mainWindow.DelShowOkMsg, "Ripristino versione fallita");
+                MyLogger.debug(e.ToString());
+                return;
+            }
+            
+            mainWindow.Dispatcher.Invoke(mainWindow.DelShowOkMsg, "Ripristino versione riuscito!", MessageBoxImage.Information);
+            MyLogger.print("Ripristino versione " + recQuery.versionToRecover.ToString() + " riuscito");
         }
 
-        
+
 
     }
 

@@ -34,8 +34,8 @@ namespace ProgettoClient
         public delegate bool AskNewAccount_dt();
         public AskNewAccount_dt DelAskNewAccount;
 
-        public delegate bool AskOverwriteFile_dt();
-        public AskOverwriteFile_dt DelAskOverwrite;
+        public delegate bool DelYesNoQuestion_dt(string message, string caption, MessageBoxImage icon = MessageBoxImage.Question);
+        public DelYesNoQuestion_dt DelYesNoQuestion;
 
         internal delegate void SetRecoverInfos_dt(RecoverInfos recInfo);
         internal SetRecoverInfos_dt DelSetRecoverInfos;
@@ -46,8 +46,8 @@ namespace ProgettoClient
         public delegate void cleanRecoveredEntryList_dt();
         public cleanRecoveredEntryList_dt DelCleanRecoveredEntryList;
 
-        public delegate void ShowErrorMsg_dt(string s);
-        public ShowErrorMsg_dt DelShowErrorMsg;
+        public delegate void ShowOkMsg_dt(string s, MessageBoxImage icon = MessageBoxImage.Error);
+        public ShowOkMsg_dt DelShowOkMsg;
 
         private const string SETTINGS_FILE_PATH = "Settings.bin";
         //TODO change this
@@ -149,13 +149,18 @@ namespace ProgettoClient
             }
         }
 
+        /// <summary>
+        /// se recoveringFolderPath = "", i path da usare sono quelli originali
+        /// </summary>
         public struct RecoveringQuery_st
         {
             public readonly int versionToRecover;
             public readonly string recoveringFolderPath;
+            public readonly RecoverInfos recInfos;
 
-            public RecoveringQuery_st(int versionToRecover, string recoveringFolderPath)
+            public RecoveringQuery_st(RecoverInfos recInfos, int versionToRecover, string recoveringFolderPath)
             {
+                this.recInfos = recInfos;
                 this.versionToRecover = versionToRecover;
                 this.recoveringFolderPath = recoveringFolderPath;
             }
@@ -254,26 +259,7 @@ namespace ProgettoClient
                 }
             }
         }
-        /*
-        private int _versionToRecover;
-        internal int versionToRecover
-        {
-            get
-            {
-                lock (this)
-                {
-                    return _versionToRecover;
-                }
-            }
-            set
-            {
-                lock (this)
-                {
-                    _versionToRecover = value;
-                }
-            }
-        }
-        */
+        
         internal enum interfaceMode_t
         {
             logged,
@@ -351,8 +337,8 @@ namespace ProgettoClient
             DelSetRecoverInfos = setRecoverInfos;
             DelSetInterfaceLoggedMode = SetInterfaceLoggedMode;
             DelCleanRecoveredEntryList = cleanRecoveredEntryList;
-            DelAskOverwrite = AskOverwriteFile;
-            DelShowErrorMsg = ShowErrorMsg;
+            DelYesNoQuestion = AskYesNoQuestion;
+            DelShowOkMsg = ShowOkMsg;
 
             //init accessory classes
             MyLogger.init(this);
@@ -379,25 +365,21 @@ namespace ProgettoClient
             //logicThread.Start(); 
         }
 
-        private void ShowErrorMsg(string msg)
+        private void ShowOkMsg(string msg, MessageBoxImage icon = MessageBoxImage.Error)
         {
             //"Errore, nome utente troppo lungo"
             string messageBoxText = msg;
             string caption = "Errore";
             MessageBoxButton button = MessageBoxButton.OK;
-            MessageBoxImage icon = MessageBoxImage.Error;
 
             // Display message box
             MessageBox.Show(messageBoxText, caption, button, icon);
         }
 
-        private bool AskOverwriteFile()
+        private bool AskYesNoQuestion(string messageBoxText, string caption, MessageBoxImage icon = MessageBoxImage.Question)
         {
             // Configure the message box to be displayed
-            string messageBoxText = "File esistente. Si desidera sovrascriverlo?";
-            string caption = "Word Processor";
             MessageBoxButton button = MessageBoxButton.YesNo;
-            MessageBoxImage icon = MessageBoxImage.Warning;
 
             // Display message box
             MessageBoxResult result = MessageBox.Show(messageBoxText, caption, button, icon);
@@ -822,7 +804,7 @@ namespace ProgettoClient
                     //verifica se deve richiedere l'intero ultimo backup
                     if (needToRecoverWholeBackup)
                     {
-                        sm.RecoverBackupVersion(RecoveringQuery);
+                        sm.RecoverSelectedVersion(RecoveringQuery);
                         needToRecoverWholeBackup = false;
                     }
 

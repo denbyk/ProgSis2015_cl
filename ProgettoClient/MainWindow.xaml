@@ -19,16 +19,15 @@
         <TextBlock HorizontalAlignment="Left" Margin="19,196,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="152" Height="20"><Run Text="Sincronizzazione Automatica"/><LineBreak/><Run/></TextBlock>
         <Button x:Name="buttManualStartStopSync" Content="Sincronizza Ora" HorizontalAlignment="Left" Margin="181,221,0,0" VerticalAlignment="Top" Width="152" Height="41" Click="buttManualStartStopSync_Click"/>
         <TextBlock HorizontalAlignment="Left" Margin="181,196,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="152" Height="20"><Run Text="Sincronizzazione "/><Run Text="Manuale"/><LineBreak/><Run Text="+"/><LineBreak/><Run/></TextBlock>
-        <Button x:Name="buttRecover" Content="Ripristina File" HorizontalAlignment="Left" Margin="19,295,0,0" VerticalAlignment="Top" Width="152" Height="41" Click="buttRecover_Click"/>
-        <TextBlock HorizontalAlignment="Left" Margin="24,270,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="30" Height="20" RenderTransformOrigin="0.667,2.75"><Run Text="ogni:"/><LineBreak/><Run/></TextBlock>
-        <TextBlock HorizontalAlignment="Left" Margin="99,270,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="72" Height="20"><Run Text="minuti"/><LineBreak/><Run/></TextBlock>
-        <TextBox x:Name="textboxCycleTime" HorizontalAlignment="Left" Height="23" Margin="54,267,0,0" TextWrapping="Wrap" Text="1" VerticalAlignment="Top" Width="40" TextAlignment="Center" LostFocus="textboxCycleTime_LostFocus" KeyDown="textboxCycleTime_KeyDown"/>
+        <Button x:Name="buttRecover" Content="Ripristina" HorizontalAlignment="Left" Margin="19,295,0,0" VerticalAlignment="Top" Width="314" Height="41" Click="buttRecover_Click"/>
+        <TextBlock HorizontalAlignment="Left" Margin="24,270,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="93" Height="20" RenderTransformOrigin="0.667,2.75"><Run Text="F"/><Run Text="requenza"/><Run Text=":"/><Run Text=" "/><Run Text="ogni"/><LineBreak/><Run/></TextBlock>
+        <TextBlock HorizontalAlignment="Left" Margin="162,270,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="72" Height="20"><Run Text="minuti"/><LineBreak/><Run/></TextBlock>
+        <TextBox x:Name="textboxCycleTime" HorizontalAlignment="Left" Height="20" Margin="117,269,0,0" TextWrapping="Wrap" Text="1" VerticalAlignment="Top" Width="40" TextAlignment="Center" LostFocus="textboxCycleTime_LostFocus" KeyDown="textboxCycleTime_KeyDown"/>
         <TextBlock HorizontalAlignment="Left" Margin="19,65,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="38" Height="17"><Run Text="Utente"/><LineBreak/><Run/></TextBlock>
         <TextBlock HorizontalAlignment="Left" Margin="156,65,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="54" Height="17"><Run Text="Password"/><LineBreak/><Run/></TextBlock>
         <TextBox x:Name="textboxUtente" HorizontalAlignment="Left" Height="19" Margin="17,87,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="120" TextAlignment="Center" LostFocus="textboxUtente_LostFocus" />
         <TextBox x:Name="textboxPassword" HorizontalAlignment="Left" Height="19" Margin="156,87,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="120" TextAlignment="Center" LostFocus="textboxPassword_LostFocus"/>
         <Button x:Name="buttLogin" Content="Login" HorizontalAlignment="Left" Margin="281,65,0,0" VerticalAlignment="Top" Width="52" Height="41" Click="buttLoginLogout_Click"/>
-        <Button x:Name="buttRecoverFolder" Content="Ripristina Cartella" HorizontalAlignment="Left" Margin="181,295,0,0" VerticalAlignment="Top" Width="152" Height="41" Click="buttRecoverFolder_Click"/>
         <TextBlock HorizontalAlignment="Left" Margin="19,15,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="75" Height="17" Text="Indirizzo IP"/>
         <TextBlock HorizontalAlignment="Left" Margin="156,15,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="75" Height="17"><Run Text="P"/><Run Text="orta"/></TextBlock>
         <TextBox x:Name="textBoxIndIP" HorizontalAlignment="Left" Height="19" Margin="17,37,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="120" LostFocus="textBoxIndIP_LostFocus"/>

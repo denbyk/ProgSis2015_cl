@@ -47,11 +47,10 @@ namespace ProgettoClient
             }
             catch(InitialBackupNeededException ibne)
             {
-                //TODO! ATTENZIONE, COME INTERROMPO L'APPLICAZIONE METRE STA FACENDO L'INITIAL BACKUP ????? al momento non c'è modo
-                //TODO!
+                //TODO! ATTENZIONE, COME INTERROMPO L'APPLICAZIONE METRE STA FACENDO L'INITIAL BACKUP ????? al momento solo tra un file e l'altro
+                
                 //non c'è ancora nessun backup sul server, impossibile scaricare una dirImage. 
                 //devo fare un initial backup completo. terminato quello bisogna riscaricare la dirImage
-
                 completeFileList = new List<RecordFile>();
                 
                 //salvo vecchio delegato
@@ -92,21 +91,16 @@ namespace ProgettoClient
             WalkDirectoryTree(myDir, doOnFile);
             deletedFiles = dim.getDeleted();
 
-            //dim.storeDirImage(); devo salvare SOLO le DirImage con i file effettivamente sincronizzati
-
-            //TODO: FORSE questo if serviva solo per debug?
             if (deletedFiles.Count > 0)
             {
                 MyLogger.print("deleted files:");
                 foreach (var item in deletedFiles)
                     MyLogger.print(item);
             }
-            //MyLogger.add("scanDir done");
             MyLogger.line();
         }
 
 
-        //TODO?: questo sistema funziona con i file RIMOSSI? Sì, DOVREBBE. da testare.
         internal void confirmSync(RecordFile f, bool deleting = false)
         {
             dim.confirmSync(f, deleting);

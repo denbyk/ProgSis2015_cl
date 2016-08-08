@@ -132,29 +132,6 @@ namespace ProgettoClient
                 dirImage.Add(rr.rf.nameAndPath, rr.rf);
             }
         }
-
-        public void storeDirImage()
-        {
-            //TODO:?prima scrivo quella nuova, poi elimino quella vecchia dal disco.
-            //throw new NotImplementedException();
-
-            try
-            {
-                FileStream fout = new FileStream(IMAGE_FILE_PATH, FileMode.Create);
-                formatter.Serialize(fout, dirImage);
-                fout.Close();
-            }
-            catch (Exception e)
-            {
-                MyLogger.print("impossibile scrivere immagine della directory su disco nel percorso: "
-                    + IMAGE_FILE_PATH);
-                MyLogger.print(e.Message);
-                //TODO? è meglio fare rethrow o fare no???
-                throw;
-            }
-
-
-        }
     }
 
 }

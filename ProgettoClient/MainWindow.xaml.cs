@@ -316,7 +316,6 @@ namespace ProgettoClient
                     value.Add(new TimeSpan(0, 1, 0));
                 SyncTimer.Stop();
                 SyncTimer.Interval = value;
-                //SyncTimer.Start();
             }
         }
 
@@ -489,7 +488,6 @@ namespace ProgettoClient
             needToSync = true;
             MakeLogicThreadCycle(); //permette al logicThread di procedere.
 
-            //TODO: possibile stesso problema di autosync (timer scatta prima che sync finisca?
             if (wasAutoSyncOn)
                 SyncTimer.Start();
         }
@@ -563,6 +561,7 @@ namespace ProgettoClient
         /// </summary>
         public void MakeLogicThreadCycle()
         {
+            System.Diagnostics.Debug.Assert(logicThread != null);
             if (!logicThread.IsAlive && !TerminateLogicThread)
             {
                 logicThread.Start();
@@ -578,8 +577,6 @@ namespace ProgettoClient
             needToSync = true;
             MakeLogicThreadCycle(); //permette al logicThread di procedere.
 
-            //TODO?: possibile problema per timer troppo corto -> thread secondario non riesce a stare dietro a tutte le richieste?
-            //possib soluzione: far riprendere il timer dopo che thread secondario ha finito il sync
             //ricomincia
             SyncTimer.Start();
         }
@@ -755,14 +752,9 @@ namespace ProgettoClient
                 sm = new SessionManager(settings.getIP(), settings.getPorta(), this);
                 //bool connected = false;
 
-                //while (!connected)
-                //{
-                //try //catch errori che richiedono riconnessione
-                //{ NON CI SONO ECCEZIONI CHE MERITINO DI RICONNETTERSI SENZA DARE modo a utente di cambiare qualche info di login
                 //gestione del login
 //                sm.login(settings.getUser(), settings.getPassw());
                 //connected = true;
-                //TODO:togliere prossima riga
 
                 //selezione cartella
 //                sm.setRootFolder(settings.getRootFolder());
@@ -829,43 +821,34 @@ namespace ProgettoClient
                     }
                     WaitForSyncTime();
                 }
-                //} NON CI SONO ECCEZIONI CHE MERITINO DI RICONNETTERSI SENZA DARE modo a utente di cambiare qualche info di login
 
-                //} //fine while(!connected)
             } //fine try esterno
             catch (SocketException)
             {
                 MyLogger.print("impossibile connettersi. Server non ragiungibile");
-                //connected = false; //ripete login e selezione cartella dopo attesa
-                //consento a utente di modificare dati di accesso
-                //TODO: DEBUG: riattivare riga dopo!!
             }
             catch (LoginFailedException)
             {
                 MyLogger.print("errore nel login. Correggere dati di accesso o creare nuovo utente.");
-                //connected = false;
-                //consento a utente di modificare dati di accesso
             }
             catch (RootSetErrorException)
             {
                 MyLogger.print("errore nella selezione della cartella. Correggere il path");
-                //TODO! devo fare logout? forse no xkè server mi ha buttato fuori
-                sm.logout();
-                //connected = false;
-                //consento a utente di modificare dati di accesso
             }
             catch (AbortLogicThreadException)
             {
-                ///TODO ??? 
-                ///il logic thread si sta chiudendo (magari perchè utente ha chiuso il programma,
-                ///eventualmente chiudere connessioni varie?
                 MyLogger.debug("LogicThread closing per abort logic thread exception");
+            }
+            catch(DirectoryNotFoundException)
+            {
+                MyLogger.print("impossibile trovare directory specificata. Selezionarne un'altra");
             }
             catch (Exception e) //eccezione critica.
             {
                 MyLogger.line();
                 MyLogger.debug(e.Message);
                 MyLogger.line();
+                MyLogger.debug(e.ToString());
                 MyLogger.debug("LogicThread closing");
             }
 
@@ -906,8 +889,6 @@ namespace ProgettoClient
         private void SyncAll()
         {
             //TODO:? implementare un meccanismo di abort tra un file e l'altro almeno.
-            //TODO: gestire caduta di connessione durante upload di un file, non deve credere di averlo sincronizzato correttamente!!!!
-            //^ FATTO MA DA TESTARE
             HashSet<RecordFile> buffer;
             buffer = d.getUpdatedFiles();
             foreach (var f in buffer)
@@ -939,21 +920,3 @@ namespace ProgettoClient
 
     }
 }
-
-//TODO:
-/* 
- * quando utente cambia qualcosa in user/psw/cartella il thread 
- * principale deve aggiornare i dati (cosa che fa) e dirlo al thread secondario!
- * attenzione a eventuali zone critiche!!!
- * oppure rendere non modificabile questi campi...
- * 
-*/
-/*
- * TODO!
- * quando la cartella non è mai stata sincronizzata uso le chiamate al server per un nuovo backup
- * negli altri casi uso quelle che ho già usato.
- * 
- * per la creazione di DirImage.bin devo chiedere al server e non fidarmi della mia versione. 
- * a ogni nuova connessione con il server chiedo DirImage.bin
- * 
- */

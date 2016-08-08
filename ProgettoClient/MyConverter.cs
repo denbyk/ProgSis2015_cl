@@ -49,14 +49,7 @@ namespace ProgettoClient
             dtDateTime = dtDateTime.AddSeconds(unixTimeStamp).ToLocalTime();
             return dtDateTime;
         }
-
-
-        //public static byte[] stringToFixedLengthByteArray(string str)
-        //{
-        //    if (str.Length != hashLength) throw new ConvertingException();
-        //    //TODO: verificare Default!!!!
-        //    return Encoding.Default.GetBytes(str);
-        //}
+        
 
     }
 

@@ -31,9 +31,8 @@ namespace ProgettoClient
         int versionToDisplay; //-1 se display di file da tutte le versioni
         recoverListEntry RListRecoveringEntry;
 
-        //todo? forse recInfo è già thread-safe senza i lock xkè usato da un solo thread?
-        private RecoverInfos _recInfos;
-        internal RecoverInfos recInfos
+        internal RecoverInfos recInfos;
+        /*internal RecoverInfos recInfos
         {
             get
             {
@@ -50,7 +49,7 @@ namespace ProgettoClient
                 }
             }
         }
-
+        */
 
         public RecoverWindow(MainWindow mainW)
         {
@@ -115,11 +114,9 @@ namespace ProgettoClient
 
         public void cleanRecovered()
         {
-            //TODO!: solo se recover effettuato!
             //lo rimuovo dalla lista di RecoverEntry
             RecoverEntryList.Remove(RListRecoveringEntry);
             //rimuovo anche dall'oggetto RecoverInfos in mainW.
-            //todo? lo fa il thread sbagliato? o chissene?
             recInfos.removeRecoverRecord(RListRecoveringEntry.rr);
             //refresh della listView
             recoverListView.Items.Refresh();
@@ -146,7 +143,7 @@ namespace ProgettoClient
         private void showRecoverInfos()
         {
             RecoverEntryList.Clear();
-            //TODO: implementare le due rappresentazioni: per files e per versioni di backup.
+            
             if (versionToDisplay == -1)
             {
                 ShowFilesFromEveryBackup();

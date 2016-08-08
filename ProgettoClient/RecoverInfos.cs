@@ -12,12 +12,6 @@ namespace ProgettoClient
         List<RecoverRecord> recInfos;
         List<int> BackupVersionNumbers;
         
-        public RecoverInfos(string stream)
-        {
-            this.init();
-            //fa parsing dello stream e popola recInfos chiamando addRecoverRecord
-            //throw new NotImplementedException();
-        }
         private void init()
         {
             mrrEqCmp = new myRecoverRecordEqComparer();
@@ -28,13 +22,6 @@ namespace ProgettoClient
         public RecoverInfos()
         {
             this.init();
-            //RecordFile r1 = new RecordFile("primo", 32, -1, new DateTime(10,10,10));
-            //RecordFile r2 = new RecordFile("secondo", 33, -2, new DateTime(20, 10, 10));
-            //RecordFile r3 = new RecordFile("primo", 32, -3, new DateTime(10, 10, 10));
-
-            //addRecoverRecord(r1, 1);
-            //addRecoverRecord(r2, 2);
-            //addRecoverRecord(r3, 3);
         }
 
         /// <summary>
@@ -57,8 +44,11 @@ namespace ProgettoClient
 
         public void removeRecoverRecord(RecoverRecord rr)
         {
-            this.recInfos.Remove(rr);
-            //TODO?: se rimuovo ultimo di una versione con quel numero potrei avere problemi se non tolgo il numero dalla recInfosVersionNumbers?
+            lock (this)
+            {
+                this.recInfos.Remove(rr);
+            }
+            
         }
 
         // aggiunge i recordFile e la sua versione alle RecoverInfos eliminando eventuali
@@ -68,8 +58,11 @@ namespace ProgettoClient
         // la addRecoverRecord mantiene una sola entry in questo caso, la prima che riceve.
         private void addRecoverRecord(RecordFile rf, int backupVersion)
         {
-            recInfos.Add(new RecoverRecord(rf, backupVersion));
-            BackupVersionNumbers.Add(backupVersion);
+            lock (this)
+            {
+                recInfos.Add(new RecoverRecord(rf, backupVersion));
+                BackupVersionNumbers.Add(backupVersion);
+            }
         }
 
         /// <summary>
@@ -108,8 +101,8 @@ namespace ProgettoClient
 
     public class RecoverRecord
     {
-        public RecordFile rf;
-        public int backupVersion;
+        public readonly RecordFile rf;
+        public readonly int backupVersion;
 
         public RecoverRecord(RecordFile rf, int backupVersion)
         {

@@ -25,7 +25,7 @@ namespace ProgettoClient
         private bool DEBUGGING = true; //TODO: remove
 
 
-        //TODO: set a timeout sensato (-1 = infinito):
+        //timeout (-1 = infinito):
         private int cnstReadTimeout = 5000; //ms
         private const int commLength = 8;
         private const string commLogin_str = "LOGIN___";
@@ -60,9 +60,6 @@ namespace ProgettoClient
         private const string commDELETED = "DELETED_";
         private const string commNOTDEL = "NOT_DEL_";
         private const string commNameTooLongPARTIAL = "MAXC_"; //"MAXC_---" dove --- sono il numero max di byte
-
-
-        //todo?: inserire commDBError
 
         private string serverIP;
         private int serverPort;
@@ -266,7 +263,7 @@ namespace ProgettoClient
             MyLogger.print("Connesso\n");
         }
 
-        private string strRecCommFromServer() //TODO: idea: se qui controllo e se il server mi ha inviato DB_ERROR lanciassi una eccezione?
+        private string strRecCommFromServer() 
         {
             return utf8.GetString(recCommFromServer());
         }
@@ -326,7 +323,7 @@ namespace ProgettoClient
             return c;
         }
 
-        internal void logout() //TODO: test it.
+        internal void logout()
         {
             if (!logged)
                 return;
@@ -432,15 +429,7 @@ namespace ProgettoClient
             }
             sendToServer(commRecoverInfo);
             waitForAck(commCmdAckFromServer);
-            //TODO!:
-            /*
-             * per esempio se qui chiedo al server le recoverInfo di una folder appena creata lui me lo deve dire in qualche modo e io lancio una
-             * eccezione, non devo chiedere le recoverInfo per creare il mio dirImage, bensì devo effettuare un backup completo iniziale e poi chiedere
-             * nuovamente le recoverInfo
-             * if(){
-             *  throw new InitialBackupNeededException()
-             * }
-             */
+
             RecoverInfos ris = new RecoverInfos();
             try
             {
@@ -472,7 +461,8 @@ namespace ProgettoClient
             }
             catch (Exception e)
             {
-                //TODO: gestire errori in readline, in addRawRecord ecc...
+                MyLogger.debug("errore in askForRecoverInfo\n");
+                MyLogger.debug(e.ToString());
                 throw;
             }
             return ris;
@@ -488,7 +478,6 @@ namespace ProgettoClient
             byte[] buf = new byte[1];
             char c = 'a';
             bool Rreceived = false;
-            string recString;
             while (true)
             {
                 serverStream.Read(buf, 0, buf.Length);
@@ -731,6 +720,3 @@ namespace ProgettoClient
 
     class InitialBackupNeededException : Exception { }
 }
-
-
-//TODO:test all SessionManager

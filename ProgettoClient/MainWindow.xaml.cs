@@ -34,33 +34,23 @@ namespace ProgettoClient
         public delegate bool AskNewAccount_dt();
         public AskNewAccount_dt DelAskNewAccount;
 
-        public delegate bool DelYesNoQuestion_dt(string message, string caption, MessageBoxImage icon = MessageBoxImage.Question);
-        public DelYesNoQuestion_dt DelYesNoQuestion;
-
         internal delegate void SetRecoverInfos_dt(RecoverInfos recInfo);
         internal SetRecoverInfos_dt DelSetRecoverInfos;
 
         internal delegate void DelSetInterfaceLoggedMode_dt(interfaceMode_t im);
         internal DelSetInterfaceLoggedMode_dt DelSetInterfaceLoggedMode;
 
-        public delegate void cleanRecoveredEntryList_dt();
-        public cleanRecoveredEntryList_dt DelCleanRecoveredEntryList;
+        //public delegate bool DelYesNoQuestion_dt(string message, string caption, MessageBoxImage icon = MessageBoxImage.Question);
+        //public DelYesNoQuestion_dt DelYesNoQuestion;
 
         public delegate void ShowOkMsg_dt(string s, MessageBoxImage icon = MessageBoxImage.Error);
         public ShowOkMsg_dt DelShowOkMsg;
 
         private const string SETTINGS_FILE_PATH = "Settings.bin";
-        //TODO change this
-        private const string DEFAULT_FOLDERROOT_PATH = "C:\\DATI\\poli\\Programmazione di Sistema\\progetto_client\\cartella_test";
-        private const double DEFAULT_CYCLE_TIME = 1;
-        private const bool DEFAULT_AUTOSYNCTOGGLE = false;
+        //todo?
+        private const bool DEBUG_DONT_LOGIN = true;
         private const string AUTOSYNC_OFF_TEXT = "Start";
         private const string AUTOSYNC_ON_TEXT = "Stop";
-        private const string DEFAULT_USER = "ù1";
-        private const string DEFAULT_PASSW = "pù1";
-        private const bool DEBUG_DONT_LOGIN = true;
-        private const string DEFAULT_IP = "192.168.0.101";//"127.0.0.1";
-        private const int DEFAULT_PORTA = 1200;
 
         private TimeSpan checkForAbortTimeSpan = new TimeSpan(0, 0, 3);
 
@@ -222,6 +212,25 @@ namespace ProgettoClient
             }
         }
 
+        private bool _logged;
+        public bool logged
+        {
+            get
+            {
+                lock (this)
+                {
+                    return _logged;
+                }
+            }
+            set
+            {
+                lock (this)
+                {
+                    _logged = value;
+                }
+            }
+        }
+
         private bool _needToRecoverWholeBackup;
         internal bool needToRecoverWholeBackup
         {
@@ -285,6 +294,8 @@ namespace ProgettoClient
                     buttRecover.IsEnabled = true;
                     textboxCycleTime.IsEnabled = true;
 
+                    this.setAutoSync(settings.getAutoSyncToggle());
+
                     _interfaceMode = value;
                 }
                 else
@@ -297,8 +308,10 @@ namespace ProgettoClient
                     buttLogin.Content = "Login";
                     buttStartStopAutoSync.IsEnabled = false;
                     buttManualStartStopSync.IsEnabled = false;
-                    //buttRecover.IsEnabled = false;
+                    buttRecover.IsEnabled = false;
                     textboxCycleTime.IsEnabled = false;
+
+                    this.setAutoSync(false);
 
                     _interfaceMode = value;
                 }
@@ -321,22 +334,23 @@ namespace ProgettoClient
 
         public Settings settings;
         private SessionManager sm;
-        private RecoverWindow recoverW;
+        public RecoverWindow recoverW;
         private bool firstConnSync;
+        
 
         public MainWindow()
         {
             //init UI
             InitializeComponent();
-            interfaceMode = interfaceMode_t.notLogged;
+            
 
             //init delegates
             DelWriteLog = writeInLog_RichTextBox;
             DelAskNewAccount = askNewAccount;
             DelSetRecoverInfos = setRecoverInfos;
             DelSetInterfaceLoggedMode = SetInterfaceLoggedMode;
-            DelCleanRecoveredEntryList = cleanRecoveredEntryList;
-            DelYesNoQuestion = AskYesNoQuestion;
+            //DelYesNoQuestion = AskYesNoQuestion;
+            
             DelShowOkMsg = ShowOkMsg;
 
             //init accessory classes
@@ -356,6 +370,9 @@ namespace ProgettoClient
 
             ApplySettings();
 
+            //imposta modalità interfaccia a not logged
+            interfaceMode = interfaceMode_t.notLogged;
+
             //let's start
             MyLogger.print("si comincia\n");
 
@@ -373,26 +390,6 @@ namespace ProgettoClient
 
             // Display message box
             MessageBox.Show(messageBoxText, caption, button, icon);
-        }
-
-        private bool AskYesNoQuestion(string messageBoxText, string caption, MessageBoxImage icon = MessageBoxImage.Question)
-        {
-            // Configure the message box to be displayed
-            MessageBoxButton button = MessageBoxButton.YesNo;
-
-            // Display message box
-            MessageBoxResult result = MessageBox.Show(messageBoxText, caption, button, icon);
-
-            // Process message box results
-            switch (result)
-            {
-                case MessageBoxResult.Yes:
-                    return true;
-                case MessageBoxResult.No:
-                    return false;
-            }
-
-            return false;
         }
 
         private void SetInterfaceLoggedMode(interfaceMode_t im)
@@ -471,10 +468,10 @@ namespace ProgettoClient
         }
 
 
-        private void cleanRecoveredEntryList()
-        {
-            recoverW.cleanRecovered();
-        }
+        //private void cleanRecoveredEntryList()
+        //{
+        //    recoverW.cleanRecovered();
+        //}
 
         private void ManualSync()
         {
@@ -499,7 +496,7 @@ namespace ProgettoClient
         {
             //myLogger usa delegati, troppo lenti alla chiusura del programma. uso direttamente append()
             //MyLogger.print("chiusura programma in corso...");
-            Log_RichTextBox.AppendText("chiusura programma in corso...");
+            Log_RichTextBox.AppendText("chiusura programma in corso...\n");
             if (logicThread == null)
                 return;
             TerminateLogicThread = true;
@@ -507,8 +504,6 @@ namespace ProgettoClient
             MakeLogicThreadCycle();
             //attende chiusura del logicThread se non è già chiuso
             if (logicThread.IsAlive == true) logicThread.Join();
-            ////reimposta interfaccia grafica in modalità not logged
-            //interfaceMode = interfaceMode_t.notLogged; dovrebbe già farla il logicThread
         }
 
         private void ApplySettings()
@@ -536,7 +531,7 @@ namespace ProgettoClient
             {
                 //se non esiste o non riesco a caricare settings:
                 MyLogger.print("Impossibile trovare impostanzioni precedenti");
-                settings = new Settings(DEFAULT_FOLDERROOT_PATH, DEFAULT_CYCLE_TIME, DEFAULT_AUTOSYNCTOGGLE, DEFAULT_USER, DEFAULT_PASSW, DEFAULT_IP, DEFAULT_PORTA);
+                settings = new Settings();
             }
         }
 
@@ -564,8 +559,16 @@ namespace ProgettoClient
             System.Diagnostics.Debug.Assert(logicThread != null);
             if (!logicThread.IsAlive && !TerminateLogicThread)
             {
-                logicThread.Start();
-                return;
+                try
+                {
+                    //TODO: ma questa riga che a volte crea problemi, serve mai? quando faccio partire il logicThread tramite MakeLogicThreadStart??
+                    logicThread.Start();
+                    return;
+                }
+                catch(System.Threading.ThreadStateException e)
+                {
+                    MyLogger.debug(e.ToString());
+                }
             }
             CycleNowEventSignaled = true;
             CycleNowEvent.Set(); //permette al logicThread di procedere.
@@ -589,7 +592,27 @@ namespace ProgettoClient
             AbortTimer.Start();
         }
 
-        
+
+        /*private bool AskYesNoQuestion(string messageBoxText, string caption, MessageBoxImage icon = MessageBoxImage.Question)
+        {
+            // Configure the message box to be displayed
+            MessageBoxButton button = MessageBoxButton.YesNo;
+
+            // Display message box
+            MessageBoxResult result = MessageBox.Show(messageBoxText, caption, button, icon);
+
+            // Process message box results
+            switch (result)
+            {
+                case MessageBoxResult.Yes:
+                    return true;
+                case MessageBoxResult.No:
+                    return false;
+            }
+
+            return false;
+        }
+        */
 
 
         /*---event handlers & interface modifier------------*/
@@ -601,6 +624,7 @@ namespace ProgettoClient
                 VistaFolderBrowserDialog folderDiag = new VistaFolderBrowserDialog();
                 folderDiag.ShowDialog();
                 settings.setRootFolder(folderDiag.SelectedPath);
+                textboxPathSyncDir.Text = settings.getRootFolder();
             }
         }
 
@@ -618,7 +642,11 @@ namespace ProgettoClient
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
+            //TODO:non scrive
+            MyLogger.print("Operazione in corso, attendere chiusura programma...");
             LogicThreadShutDown();
+            //attende chiusura thread (?)
+            //logicThread.Join();
             SaveSettings();
         }
 
@@ -630,7 +658,7 @@ namespace ProgettoClient
             if (!Double.TryParse(text, out num))
             {
                 //errore
-                settings.setCycleTime(DEFAULT_CYCLE_TIME);
+                settings.setCycleTime(0); //numero non valido, verrà restituito il DEFAULT al prossimo get
             }
             else
             {
@@ -677,14 +705,21 @@ namespace ProgettoClient
         {
             if (interfaceMode == interfaceMode_t.notLogged)
             {
+                //if (logicThread != null && logicThread.IsAlive)
+                //{
+                //    LogicThreadShutDown();
+                //    logicThread.Join();
+                //}
                 //imposto thread secondario
                 logicThread = new Thread(logicThreadStart);
+                logicThread.Name = "Thread Logico";
                 logicThread.Start();
             }
             else
             {
+                if (logged)
+                    sm.logout();
                 SetInterfaceLoggedMode(interfaceMode_t.notLogged);
-                sm.logout();
                 LogicThreadShutDown();
             }
         }
@@ -720,7 +755,8 @@ namespace ProgettoClient
             catch (FormatException fe)
             {
                 MyLogger.debug(fe.ToString());
-                textBoxPorta.Text = DEFAULT_PORTA.ToString();
+                settings.setPorta(0); //valore non valido, con il get sarà restituito il default
+                textBoxPorta.Text = settings.getPorta().ToString();
                 return;
             }
             settings.setPorta(res);
@@ -740,8 +776,9 @@ namespace ProgettoClient
         private void logicThreadStart()
         {
             MyLogger.debug("LogicThread starting");
-            //TODO:DEBUG, DA TOGLIERE LA PROSSIMA RIGA
-            this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.logged); //DEBUG
+            
+            //todo: prox riga solo per debug
+            this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.logged);
 
             try //catch errori non recuperabili per il thread
             {
@@ -754,19 +791,19 @@ namespace ProgettoClient
 
                 //gestione del login
 //                sm.login(settings.getUser(), settings.getPassw());
-                //connected = true;
+                logged = true;
 
                 //selezione cartella
 //                sm.setRootFolder(settings.getRootFolder());
 
                 //attiva modalità logged nella UI
-                this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.logged);
+//                this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.logged);
 
                 //voglio iniziare con una sync
 //                needToSync = true;
 
                 //è la prima sync per questa connessione
-//                firstConnSync = true;
+                firstConnSync = true;
 
                 //ciclo finchè la connessione è attiva. si esce solo con eccezione o con chiusura thread logico (anch'essa un'eccezione).
                 while (true)
@@ -778,9 +815,16 @@ namespace ProgettoClient
                         if (firstConnSync)
                         {
                             firstConnSync = false;
-
-                            //init del dirMonitor
-                            d = new DirMonitor(settings.getRootFolder(), sm);
+                            try
+                            {
+                                //init del dirMonitor
+                                d = new DirMonitor(settings.getRootFolder(), sm);
+                            }
+                            catch (EmptyDirException)
+                            {
+                                //se arrivo qui è perchè c'è stata la prima connessione, l'initial backup di una cartella vuota e il download delle recoverInfo sempre vuote.
+                                firstConnSync = true;
+                            }
                         }
                         else //non è la prima connessione
                         {
@@ -796,7 +840,7 @@ namespace ProgettoClient
                     //verifica se deve richiedere l'intero ultimo backup
                     if (needToRecoverWholeBackup)
                     {
-                        sm.RecoverSelectedVersion(RecoveringQuery);
+                        sm.AskForSelectedBackupVersion(RecoveringQuery);
                         needToRecoverWholeBackup = false;
                     }
 
@@ -837,13 +881,14 @@ namespace ProgettoClient
             }
             catch (AbortLogicThreadException)
             {
+                MyLogger.print("Connessione Interrotta\n");
                 MyLogger.debug("LogicThread closing per abort logic thread exception");
             }
             catch(DirectoryNotFoundException)
             {
                 MyLogger.print("impossibile trovare directory specificata. Selezionarne un'altra");
             }
-            catch (Exception e) //eccezione critica.
+            catch (Exception e) //eccezione sconosciuta.
             {
                 MyLogger.line();
                 MyLogger.debug(e.Message);
@@ -860,6 +905,7 @@ namespace ProgettoClient
             }
             //disattivo il timer che sblocca periodicamente il logicThread affinchè controlli se deve abortire
             AbortTimer.Stop();
+            logged = false;
             return; //logic thread termina qui
         }
 

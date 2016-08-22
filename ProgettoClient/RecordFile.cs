@@ -32,18 +32,9 @@ namespace ProgettoClient
         public RecordFile(System.IO.FileInfo fi)
         {
             nameAndPath = fi.FullName;
-            hash = calcHash();
+            hash = calcHash(this.nameAndPath);
             size = fi.Length;
             lastModified = new System.DateTime(fi.LastWriteTime.Year, fi.LastWriteTime.Month, fi.LastWriteTime.Day, fi.LastWriteTime.Hour, fi.LastWriteTime.Minute, fi.LastWriteTime.Second);
-        }
-
-        private string calcHash()
-        {
-            var md5 = MD5.Create();
-            var stream = File.OpenRead(this.nameAndPath);
-            byte[] x = md5.ComputeHash(stream); //char di 16 caratteri.
-            string hex = BitConverter.ToString(x).Replace("-", string.Empty); //rappresentazione in esadecimale -> 32 caratteri.
-            return hex;
         }
 
         public RecordFile(RecordFile rf)
@@ -120,6 +111,17 @@ namespace ProgettoClient
             string[] list = nameAndPath.Split(sep);
             return list.Last<string>();
         }
+
+        public static string calcHash(string nameAndPath)
+        {
+            var md5 = MD5.Create();
+            var stream = File.OpenRead(nameAndPath);
+            byte[] x = md5.ComputeHash(stream); //char di 16 caratteri.
+            string hex = BitConverter.ToString(x).Replace("-", string.Empty); //rappresentazione in esadecimale -> 32 caratteri.
+            stream.Close();
+            return hex;
+        }
+
 
     }
 

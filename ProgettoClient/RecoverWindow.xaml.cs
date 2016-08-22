@@ -31,6 +31,9 @@ namespace ProgettoClient
         int versionToDisplay; //-1 se display di file da tutte le versioni
         recoverListEntry RListRecoveringEntry;
 
+        public delegate bool DelYesNoQuestion_dt(string message, string caption);
+        public DelYesNoQuestion_dt DelYesNoQuestion;
+
         internal RecoverInfos recInfos;
         /*internal RecoverInfos recInfos
         {
@@ -55,6 +58,7 @@ namespace ProgettoClient
         {
             InitializeComponent();
             this.mainW = mainW;
+            DelYesNoQuestion = AskYesNoQuestion;
             RecoverEntryList = new List<recoverListEntry>();
             RecoverEntryList.Add( new recoverListEntry() { Name = "Caricamento in corso...", lastMod = ""});
             recoverListView.ItemsSource = RecoverEntryList;
@@ -66,6 +70,29 @@ namespace ProgettoClient
             comboRecoverViewMode.SelectedIndex = 0;
             versionToDisplay = -1;
             this.buttRecover.IsEnabled = false;
+        }
+
+
+        private bool AskYesNoQuestion(string messageBoxText, string caption)
+        {
+            MessageBoxImage icon = MessageBoxImage.Question;
+
+            // Configure the message box to be displayed
+            MessageBoxButton button = MessageBoxButton.YesNo;
+
+            // Display message box
+            MessageBoxResult result = MessageBox.Show(messageBoxText, caption, button, icon);
+
+            // Process message box results
+            switch (result)
+            {
+                case MessageBoxResult.Yes:
+                    return true;
+                case MessageBoxResult.No:
+                    return false;
+            }
+
+            return false;
         }
 
         private void buttRecover_click(object sender, RoutedEventArgs e)
@@ -112,15 +139,15 @@ namespace ProgettoClient
             mainW.MakeLogicThreadCycle();
         }
 
-        public void cleanRecovered()
-        {
-            //lo rimuovo dalla lista di RecoverEntry
-            RecoverEntryList.Remove(RListRecoveringEntry);
-            //rimuovo anche dall'oggetto RecoverInfos in mainW.
-            recInfos.removeRecoverRecord(RListRecoveringEntry.rr);
-            //refresh della listView
-            recoverListView.Items.Refresh();
-        }
+        //public void cleanRecovered()
+        //{
+        //    //lo rimuovo dalla lista di RecoverEntry
+        //    RecoverEntryList.Remove(RListRecoveringEntry);
+        //    //rimuovo anche dall'oggetto RecoverInfos in mainW.
+        //    recInfos.removeRecoverRecord(RListRecoveringEntry.rr);
+        //    //refresh della listView
+        //    recoverListView.Items.Refresh();
+        //}
 
         internal void setRecoverInfos(RecoverInfos recInfos)
         {
@@ -228,7 +255,6 @@ namespace ProgettoClient
         }
 
     }
-
 
 }
 

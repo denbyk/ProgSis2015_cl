@@ -71,7 +71,26 @@ namespace ProgettoClient
         /// <returns></returns>
         public List<RecoverRecord> getRecoverUniqueList()
         {
-            var uniqueRecInfos = recInfos.Distinct<RecoverRecord>(new myRecoverRecordEqComparer());
+
+            var uniqueRecInfos = recInfos
+                .GroupBy(rr => rr, new myRecoverRecordEqComparer())
+                .Select(g => new RecoverRecord(g.Key.rf, g.Max(rr => rr.backupVersion)));
+            
+            // SELECT RR.RF, MAX(RR.VERSION)
+            // FROM RECINFOS
+            // GROUP BY RR.RF
+            //    ___
+
+            //SELECT authorId, genre, COUNT(*) AS count
+            //FROM books
+            //GROUP BY authorId, genre
+            ////fluent syntax
+            //var numBooksPerAuthorGenre =
+            //    db.Books.GroupBy(b => new { b.AuthorId, b.Genre })
+            //.Select(g => new { g.Key.AuthorId, g.Key.Genre, Count = g.Count() }
+            
+
+            //var uniqueRecInfos = recInfos.Distinct<RecoverRecord>(new myRecoverRecordEqComparer());
             return uniqueRecInfos.ToList<RecoverRecord>();
         }
 
@@ -83,6 +102,11 @@ namespace ProgettoClient
         public List<RecoverRecord> getVersionSpecificRecoverList(int version)
         {
             return recInfos.Where<RecoverRecord>(rr => rr.backupVersion == version).ToList<RecoverRecord>();
+        }
+
+        public int getVersionSpecificCount(int version)
+        {
+            return recInfos.Where<RecoverRecord>(rr => rr.backupVersion == version).Count();
         }
 
         public List<int> getBackupVersionNumbers()

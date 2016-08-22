@@ -45,15 +45,35 @@ namespace ProgettoClient.Tests
         public void getRecoverUniqueListTest()
         {
             RecoverInfos ris = new RecoverInfos();
-            ris.addRawRecord("C:\\ciao1.txt\r\n0000000000000000abcdefghabcdefghabcdefghabcdefgh\r\n", 1);
-            ris.addRawRecord("C:\\ciao2.txt\r\n0000000000000000abcdefghabcdefghabcdefghabcdefgh\r\n", 2);
-            ris.addRawRecord("C:\\ciao3.txt\r\n0000000000000000abcdefghabcdefghabcdefghabcdefgh\r\n", 3);
-            ris.addRawRecord("C:\\ciao2.txt\r\n0000000000000000abcdefghabcdefghabcdefghabcdefgh\r\n", 2);
+            string rfA = "C:\\a.txt\r\n0000000000000000abcdefghabcdefghabcdefghabcdefgh\r\n";
+            string rfB = "C:\\b.txt\r\n0000000000000000abcdefghabcdefghabcdefghabcdefgh\r\n";
+            string rfC = "C:\\c.txt\r\n0000000000000000abcdefghabcdefghabcdefghabcdefgh\r\n";
+            string rfD = "C:\\d.txt\r\n0000000000000000abcdefghabcdefghabcdefghabcdefgh\r\n";
+
+            ris.addRawRecord(rfA, 1);
+            ris.addRawRecord(rfB, 1);
+            ris.addRawRecord(rfC, 1);
+
+            ris.addRawRecord(rfA, 2);
+            ris.addRawRecord(rfD, 2);
+
+            ris.addRawRecord(rfB, 3);
+            ris.addRawRecord(rfC, 3);
+            ris.addRawRecord(rfD, 3);
             var res = ris.getRecoverUniqueList();
-            Assert.AreEqual(res.Count, 3);
-            Assert.AreEqual(res[0].rf.nameAndPath, "C:\\ciao1.txt");
-            Assert.AreEqual(res[1].rf.nameAndPath, "C:\\ciao2.txt");
-            Assert.AreEqual(res[2].rf.nameAndPath, "C:\\ciao3.txt");
+            Assert.AreEqual(4, res.Count);
+
+            //expected:
+            /*
+             * a2
+             * b3
+             * c3
+             * d3
+             */
+            //Assert.IsTrue(res.Contains())
+            //Assert.AreEqual(res[1].rf.nameAndPath, "C:\\ciao2.txt");
+            //Assert.AreEqual(res[2].rf.nameAndPath, "C:\\ciao3.txt");
+            //Assert.AreEqual(res[0].rf.nameAndPath, "C:\\ciao1.txt");
         }
     }
 }

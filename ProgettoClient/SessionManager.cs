@@ -22,7 +22,7 @@ namespace ProgettoClient
     //classe che si occupa di dialogare con il server.
     class SessionManager
     {
-        private bool DEBUGGING = true; //TODO: remove
+        private bool DEBUGGING_NO_SERVER = true; //TODO: remove
 
 
         //timeout (-1 = infinito):
@@ -52,7 +52,7 @@ namespace ProgettoClient
         private const string commloginerr = "LOGINERR";
         private const string commCmdAckFromServer = "CMND_REC";
         private const string commInfoAckFromServer = "INFO_OK_";
-        private const string commDataAckFromServer = "DATA_OK_";
+        private const string commDataAck = "DATA_OK_";
         private const string commMissBackupFromServer = "MISS_BCK";
         private const string commBackupOkFromServer = "BACKUPOK";
         private const string commSndAgain = "SNDAGAIN";
@@ -72,8 +72,6 @@ namespace ProgettoClient
 
         private System.Net.Sockets.TcpClient clientSocket = new System.Net.Sockets.TcpClient();
         private NetworkStream serverStream;
-
-        private bool logged;
 
         //private Dictionary<byte[], commandsEnum> commands;
 
@@ -128,7 +126,7 @@ namespace ProgettoClient
         /// <returns></returns>
         public void login(string user, string password)
         {
-            if (logged)
+            if (mainWindow.logged)
                 logout();
 
             if (!clientSocket.Connected)
@@ -154,7 +152,7 @@ namespace ProgettoClient
             switch (/*commloggedok)*/strRecCommFromServer())
             {
                 case commloggedok:
-                    logged = true;
+                    mainWindow.logged = true;
                     break;
                 case commloginerr:
                     //create_ac?
@@ -164,22 +162,22 @@ namespace ProgettoClient
                     {
                         //newConnection();
                         createAccount(user, password); //login automatico
-                        logged = true;
+                        mainWindow.logged = true;
                         return;
                     }
                     else
                     {
-                        logged = false;
+                        mainWindow.logged = false;
                         throw new LoginFailedException();
                     }
                     break;
                 case commAlreadyLogged:
                     MyLogger.print("utente già connesso");
-                    logged = false;
+                    mainWindow.logged = false;
                     throw new LoginFailedException();
                     break;
                 default:
-                    logged = false;
+                    mainWindow.logged = false;
                     throw new LoginFailedException();
                     break;
             }
@@ -229,7 +227,7 @@ namespace ProgettoClient
                     {
                         //nome utente troppo lungo.
                         int maxLength = Int32.Parse(risp.Substring(5, 3));
-                        mainWindow.Dispatcher.Invoke(mainWindow.DelShowOkMsg, "Errore, nome utente troppo lungo. Max: " + maxLength + " caratteri");
+                        mainWindow.Dispatcher.Invoke(mainWindow.DelShowOkMsg, "Errore, nome utente troppo lungo. Max: " + maxLength);
                         throw new AbortLogicThreadException();
                     }
                     else
@@ -297,12 +295,18 @@ namespace ProgettoClient
 
         private void sendToServer(byte[] toSend)
         {
+            //todo
+            if (DEBUGGING_NO_SERVER)
+                return;
             serverStream.Write(toSend, 0, toSend.Length);
             serverStream.Flush();
         }
 
         private void waitForAck(string ackExpected)
         {
+            //todo
+            if (DEBUGGING_NO_SERVER)
+                return;
             string ack = strRecCommFromServer();
             if (ack == ackExpected)
                 return;
@@ -325,9 +329,6 @@ namespace ProgettoClient
 
         internal void logout()
         {
-            if (!logged)
-                return;
-
             sendToServer(commLogout_str);
             MyLogger.print("disconnessione in corso...");
 
@@ -335,7 +336,7 @@ namespace ProgettoClient
 
             MyLogger.print("disconnessione effettuata\n");
 
-            logged = false;
+            mainWindow.logged = false;
         }
 
 
@@ -413,8 +414,9 @@ namespace ProgettoClient
 
         public RecoverInfos askForRecoverInfo()
         {
+            
             //todo: remove
-            if (DEBUGGING)
+            if (DEBUGGING_NO_SERVER)
             {
                 RecoverInfos risdbg = new RecoverInfos();
                 risdbg.addRawRecord("C:\\DATI\\poli\\Programmazione di Sistema\\progetto_client\\cartella_test\\1\r\n000000111111111100000000000000000000000000000000", 1);
@@ -427,6 +429,7 @@ namespace ProgettoClient
                 risdbg.addRawRecord("percorso\r\n000000111111111100000000000000000000000000000000", 1);
                 return risdbg;
             }
+            //*/
             sendToServer(commRecoverInfo);
             waitForAck(commCmdAckFromServer);
 
@@ -518,24 +521,69 @@ namespace ProgettoClient
 
         public void askForSingleFile(RecoverRecord rr)
         {
+            FileStream fout;
+
             MyLogger.print("recovering file: " + rr.rf.nameAndPath);
             sendToServer(commRecoverFile);
             waitForAck(commCmdAckFromServer);
+            try
+            {
+                if (File.Exists(rr.rf.nameAndPath))
+                {
+                    //chiede se sovrascrivere
+                    string message = "file già esistente. si desidera sovrascriverlo?";
+                    string caption = "attenzione";
+                    //TODO sistemare prox riga. posso farlo chiedere direttamente a main thread sul click del button
+                    bool wantOverwrite = (bool)mainWindow.recoverW.Dispatcher.Invoke(mainWindow.recoverW.DelYesNoQuestion, message, caption);
+                    if (wantOverwrite)
+                    {
+                        //salvare con nome
+                        throw new IOException("need to save with name");
+                    }
+                }
+                else
+                {
+                    Directory.CreateDirectory(System.IO.Path.GetDirectoryName(rr.rf.nameAndPath));
+                }
+                fout = File.Open(rr.rf.nameAndPath, FileMode.Create);
+            }
+            catch (IOException e)
+            {
+                //file omonimo esiste già o altri errori nell'aprire il file. apro una dialog di salvataggio
+                Microsoft.Win32.SaveFileDialog sfd = new Microsoft.Win32.SaveFileDialog();
+                sfd.InitialDirectory = mainWindow.settings.getRootFolder();
+                sfd.FileName = rr.rf.getJustName();
+                Nullable<bool> result = sfd.ShowDialog();
+                if (result == true)
+                {
+                    fout = File.Open(sfd.FileName, FileMode.Create);
+                }
+                else
+                {
+                    MyLogger.print("Operazione Annullata\n");
+                    //annullo richiesta recupero di questo file
+                    return;
+                }
+            }
+
+            //invio nome singolo file
+            sendToServer(rr.rf.nameAndPath + "\r\n" + rr.backupVersion.ToString() + "\r\n");
 
             try
             {
-                SaveSingleFile(rr);
+                //ricevi contenuto file
+                RecFileContent(rr.rf.nameAndPath, fout);
             }
-            catch (CancelFileRequestException c)
+            catch (CancelFileRequestException)
             {
-                return;
+                MyLogger.print("Operazione Annullata\n");
             }
 
-            //elimina da recoverRecords e da recoverEntryList
-            mainWindow.Dispatcher.Invoke(mainWindow.DelCleanRecoveredEntryList);
-
+            fout.Close();
             MyLogger.print("received\n");
         }
+
+
 
         private void SendWholeFileToServer(RecordFile rf)
         {
@@ -564,7 +612,7 @@ namespace ProgettoClient
 
                 //check ack
                 resp = strRecCommFromServer();
-                if (resp != commDataAckFromServer)
+                if (resp != commDataAck)
                 {
                     if (resp == commSndAgain)
                     {
@@ -580,98 +628,96 @@ namespace ProgettoClient
             }
         }
 
-        private void SaveSingleFile(RecoverRecord rr)
+
+        /// <summary>
+        /// return true se ricezione corretta, false altrimenti
+        /// </summary>
+        /// <param name="fout">already opened output fileStream</param>
+        /// <returns></returns>
+        private void RecFileContent(string FileNameAndPath, FileStream fout)
         {
-            FileStream fout;
-            try
-            {
-                if (File.Exists(rr.rf.nameAndPath))
-                {
-                    //chiede se sovrascrivere
-                    string message = "file già esistente. si desidera sovrascriverlo?";
-                    string caption = "caption";
-                    bool wantOverwrite = (bool)mainWindow.Dispatcher.Invoke(mainWindow.DelYesNoQuestion, message, caption);
-                    if (wantOverwrite)
-                    {
-                        fout = File.Open(rr.rf.nameAndPath, FileMode.Create);
-                    }
-                    else
-                    {
-                        throw new IOException("need to save with name");
-                    }
-                }
-                else
-                {
-                    Directory.CreateDirectory(System.IO.Path.GetDirectoryName(rr.rf.nameAndPath));
-                    fout = File.Open(rr.rf.nameAndPath, FileMode.CreateNew);
-                }
-            }
-            catch (IOException e)
-            {
-                //file omonimo esiste già o altri errori nell'aprire il file. apro una dialog di salvataggio
-                Microsoft.Win32.SaveFileDialog sfd = new Microsoft.Win32.SaveFileDialog();
-                sfd.InitialDirectory = mainWindow.settings.getRootFolder();
-                sfd.FileName = rr.rf.getJustName();
-                Nullable<bool> result = sfd.ShowDialog();
-                if (result == true)
-                {
-                    fout = File.Open(sfd.FileName, FileMode.Create);
-                }
-                else
-                {
-                    //annullo richiesta recupero di questo file
-                    throw new CancelFileRequestException();
-                }
-            }
+            //TODO: sistemare apri/chiudi dei file
 
-            RecFileContent(rr, fout);
-
-            fout.Close();
-        }
-
-        private void RecFileContent(RecoverRecord rr, FileStream fout)
-        {
             //invio al server della richiesta per il file specifico.
             //"file.txt\r\n121\r\n"
-            sendToServer(rr.rf.nameAndPath + "\r\n" + rr.backupVersion.ToString() + "\r\n");
+            //TODO la prox riga non vale per recoverWholeBackup. non devo mandare il nome del file io, lui mi manda il nome del file e io lo ricevo.
+            //sendToServer(rr.rf.nameAndPath + "\r\n" + rr.backupVersion.ToString() + "\r\n");
 
-            //ricezione e salvataggio su disco.
-            var buffer = new byte[1024];
-            int bytesRead;
-            while ((bytesRead = serverStream.Read(buffer, 0, buffer.Length)) > 0)
+            //ricezione hash
+            byte[] hashReceived = new byte[32];
+            var count = serverStream.Read(hashReceived, 0, 32);
+            string strHash = System.Text.Encoding.UTF8.GetString(hashReceived);
+
+            //data_rec
+            sendToServer(commDataRec);
+
+            int attempt = 0;
+            do
             {
-                fout.Write(buffer, 0, bytesRead);
+                //ricezione e salvataggio su disco.
+                var buffer = new byte[1024];
+                int bytesRead;
+                //todo: se write fallisce xkè file già aperto da altro programma lo dico all'utente
+                do
+                {
+                    bytesRead = serverStream.Read(buffer, 0, buffer.Length);
+                    fout.Write(buffer, 0, bytesRead);
+                }
+                while (serverStream.DataAvailable);
+
+                //calcolo e confronto hash
+                var computedHash = RecordFile.calcHash(FileNameAndPath);
+                if (computedHash == strHash)
+                {
+                    sendToServer(commDataAck);
+                    return;
+                }
+                else
+                {
+                    sendToServer(commSndAgain);
+                    attempt++;
+                }
             }
+            while (attempt < 5);
+            
+            MyLogger.print("errore nel download del file. impossibile effettuare il ripristino.\n");
+            //todo: catchare questa eccezione nelle funzioni chiamanti
+            throw new CancelFileRequestException();
         }
 
 
 
-        internal void RecoverSelectedVersion(MainWindow.RecoveringQuery_st recQuery)
+        internal void AskForSelectedBackupVersion(MainWindow.RecoveringQuery_st recQuery)
         {
             int version = recQuery.versionToRecover;
             MyLogger.print("recovering backup version: " + recQuery.versionToRecover);
             sendToServer(commRecoverBackup);
             waitForAck(commCmdAckFromServer);
             //seleziono versione
-            sendToServer(recQuery.versionToRecover.ToString());
-            //TODO? RISPOSTA DA SERVER?
-            //ricevo files associati ai recoverRecords
+            sendToServer(version.ToString());
+
+            int fileCount = recQuery.recInfos.getVersionSpecificCount(version);
 
             try
             {
-                foreach (RecoverRecord rr in recQuery.recInfos.getVersionSpecificRecoverList(version))
+                for (int i = 0; i < fileCount; i++)
                 {
+
+                    //legge nome del file
+                    string fileName = strRecCommFromServer();
+                    //TODO? fileName ha anche path? suppongo di sì
+
                     string newPathAndName;
                     if (recQuery.recoveringFolderPath != "")
                     {
-                        System.Diagnostics.Debug.Assert(rr.rf.nameAndPath.Contains(mainWindow.settings.getRootFolder()));
+                        System.Diagnostics.Debug.Assert(fileName.Contains(mainWindow.settings.getRootFolder()));
                         //elimina la rootFolder. lascia // iniziale
-                        string localPath = rr.rf.nameAndPath.Substring(mainWindow.settings.getRootFolder().Length);
+                        string localPath = fileName.Substring(mainWindow.settings.getRootFolder().Length);
                         newPathAndName = recQuery.recoveringFolderPath.TrimEnd(Path.AltDirectorySeparatorChar) + localPath;
                     }
                     else
                     {
-                        newPathAndName = rr.rf.nameAndPath;
+                        newPathAndName = fileName;
                     }
 
                     FileStream fout;
@@ -680,29 +726,36 @@ namespace ProgettoClient
                     {
                         fout = new FileStream(newPathAndName, FileMode.Create);
                     }
-                    catch(IOException e)
+                    catch (IOException e)
                     {
                         //se file è protetto ne crea una copia a fianco
-                        fout = new FileStream(newPathAndName + "-restoredCopy", FileMode.Create);
+                        newPathAndName += "-restoredCopy";
+                        fout = new FileStream(newPathAndName, FileMode.Create);
                     }
 
-                    RecFileContent(rr, fout);
-                    fout.Close();
+                    try
+                    {
+                        RecFileContent(newPathAndName, fout);
+                    }
+                    catch (CancelFileRequestException)
+                    {
+                        MyLogger.print("Operazione Annullata\n");
+                    }
                 }
+
+                mainWindow.Dispatcher.Invoke(mainWindow.DelShowOkMsg, "Ripristino versione completato!", MessageBoxImage.Information);
+                MyLogger.print("Ripristino versione " + recQuery.versionToRecover.ToString() + " riuscito");
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 MyLogger.print("ripristino fallito");
                 mainWindow.Dispatcher.Invoke(mainWindow.DelShowOkMsg, "Ripristino versione fallita");
                 MyLogger.debug(e.ToString());
                 return;
             }
-            
-            mainWindow.Dispatcher.Invoke(mainWindow.DelShowOkMsg, "Ripristino versione riuscito!", MessageBoxImage.Information);
-            MyLogger.print("Ripristino versione " + recQuery.versionToRecover.ToString() + " riuscito");
         }
 
-
+    
 
     }
 
@@ -719,4 +772,6 @@ namespace ProgettoClient
     class RootSetErrorException : Exception { }
 
     class InitialBackupNeededException : Exception { }
+
+    
 }

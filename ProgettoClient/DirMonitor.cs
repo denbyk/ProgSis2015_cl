@@ -67,8 +67,13 @@ namespace ProgettoClient
                 sm.sendInitialBackup(completeFileList);
                 completeFileList = null;
 
-                //riscarico la dirImage
-                dim = new DirImageManager(myDir, sm);
+                //se la cartella è vuota la new DirImageManager continua a fallire, viene rilanciata l'eccezione InitialBackupNeededException
+                try
+                {
+                    //riscarico la dirImage
+                    dim = new DirImageManager(myDir, sm);
+                }
+                catch (InitialBackupNeededException) { throw new EmptyDirException(); }
             }
             doOnFile = checkFile;
             init();
@@ -204,5 +209,7 @@ namespace ProgettoClient
 
         }
 
+
     }
+    class EmptyDirException : Exception { }
 }

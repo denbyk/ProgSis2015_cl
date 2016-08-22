@@ -19,7 +19,7 @@
         <TextBlock HorizontalAlignment="Left" Margin="19,196,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="152" Height="20"><Run Text="Sincronizzazione Automatica"/><LineBreak/><Run/></TextBlock>
         <Button x:Name="buttManualStartStopSync" Content="Sincronizza Ora" HorizontalAlignment="Left" Margin="181,221,0,0" VerticalAlignment="Top" Width="152" Height="41" Click="buttManualStartStopSync_Click"/>
         <TextBlock HorizontalAlignment="Left" Margin="181,196,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="152" Height="20"><Run Text="Sincronizzazione "/><Run Text="Manuale"/><LineBreak/><Run Text="+"/><LineBreak/><Run/></TextBlock>
-        <Button x:Name="buttRecover" Content="Ripristina" HorizontalAlignment="Left" Margin="19,295,0,0" VerticalAlignment="Top" Width="314" Height="41" Click="buttRecover_Click"/>
+        <Button x:Name="buttRecover" Content="Ripristina" HorizontalAlignment="Left" Margin="17,295,0,0" VerticalAlignment="Top" Width="314" Height="41" Click="buttRecover_Click"/>
         <TextBlock HorizontalAlignment="Left" Margin="24,270,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="93" Height="20" RenderTransformOrigin="0.667,2.75"><Run Text="F"/><Run Text="requenza"/><Run Text=":"/><Run Text=" "/><Run Text="ogni"/><LineBreak/><Run/></TextBlock>
         <TextBlock HorizontalAlignment="Left" Margin="162,270,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="72" Height="20"><Run Text="minuti"/><LineBreak/><Run/></TextBlock>
         <TextBox x:Name="textboxCycleTime" HorizontalAlignment="Left" Height="20" Margin="117,269,0,0" TextWrapping="Wrap" Text="1" VerticalAlignment="Top" Width="40" TextAlignment="Center" LostFocus="textboxCycleTime_LostFocus" KeyDown="textboxCycleTime_KeyDown"/>

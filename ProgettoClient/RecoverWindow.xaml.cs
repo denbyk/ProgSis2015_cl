@@ -34,31 +34,18 @@ namespace ProgettoClient
         public delegate bool DelYesNoQuestion_dt(string message, string caption);
         public DelYesNoQuestion_dt DelYesNoQuestion;
 
+        public delegate void DelCloseWindow_dt();
+        public DelCloseWindow_dt DelCloseWindow;
+
         internal RecoverInfos recInfos;
-        /*internal RecoverInfos recInfos
-        {
-            get
-            {
-                lock (this)
-                {
-                    return _recInfos;
-                }
-            }
-            set
-            {
-                lock (this)
-                {
-                    _recInfos = value;
-                }
-            }
-        }
-        */
+
 
         public RecoverWindow(MainWindow mainW)
         {
             InitializeComponent();
             this.mainW = mainW;
             DelYesNoQuestion = AskYesNoQuestion;
+            DelCloseWindow = () => { this.Close(); return; };
             RecoverEntryList = new List<recoverListEntry>();
             RecoverEntryList.Add( new recoverListEntry() { Name = "Caricamento in corso...", lastMod = ""});
             recoverListView.ItemsSource = RecoverEntryList;
@@ -201,17 +188,6 @@ namespace ProgettoClient
             {
                 RecoverEntryList.Add(new recoverListEntry(rec));
             }
-        }
-
-
-
-        /// <summary>
-        /// TODO: DA CANCELLARE
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void DEBUGBUTT_Click(object sender, RoutedEventArgs e)
-        {
         }
 
         private void comboRecoverViewMode_SelectionChanged(object sender, SelectionChangedEventArgs e)

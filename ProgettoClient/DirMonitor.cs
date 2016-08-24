@@ -102,7 +102,7 @@ namespace ProgettoClient
                 foreach (var item in deletedFiles)
                     MyLogger.print(item);
             }
-            MyLogger.line();
+            //MyLogger.line();
         }
 
 
@@ -127,20 +127,23 @@ namespace ProgettoClient
             switch (status)
             {
                 case FileStatus.New:
-                    MyLogger.print("new: ");
+                    MyLogger.print("nuovo: ");
                     newFiles.Add(thisFile);
+                    MyLogger.print(fi.Name + "\n");
                     break;
                 case FileStatus.Updated:
-                    MyLogger.print("updated: ");
+                    MyLogger.print("aggiornato: ");
                     updatedFiles.Add(thisFile);
+                    MyLogger.print(fi.Name + "\n");
                     break;
                 case FileStatus.Old:
-                    MyLogger.print("old: ");
+                    MyLogger.debug("vecchio: ");
+                    MyLogger.debug(fi.Name + "\n");
                     //nothing to do
                     break;
             }
             //MyLogger.add(thisFile);
-            MyLogger.print(fi.Name + "\n");
+            
         }
 
         /// <summary>

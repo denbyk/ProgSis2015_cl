@@ -43,7 +43,7 @@ namespace ProgettoClient
         //public delegate bool DelYesNoQuestion_dt(string message, string caption, MessageBoxImage icon = MessageBoxImage.Question);
         //public DelYesNoQuestion_dt DelYesNoQuestion;
 
-        public delegate void ShowOkMsg_dt(string s, MessageBoxImage icon = MessageBoxImage.Error);
+        public delegate void ShowOkMsg_dt(string s, MessageBoxImage icon);
         public ShowOkMsg_dt DelShowOkMsg;
 
         private const string SETTINGS_FILE_PATH = "Settings.bin";
@@ -350,7 +350,6 @@ namespace ProgettoClient
             DelSetRecoverInfos = setRecoverInfos;
             DelSetInterfaceLoggedMode = SetInterfaceLoggedMode;
             //DelYesNoQuestion = AskYesNoQuestion;
-            
             DelShowOkMsg = ShowOkMsg;
 
             //init accessory classes
@@ -374,18 +373,14 @@ namespace ProgettoClient
             interfaceMode = interfaceMode_t.notLogged;
 
             //let's start
-            MyLogger.print("si comincia\n");
-
-            //DEBUG: lo fa partire il tasto login in realtà
-            //logicThread = new Thread(logicThreadStart);
-            //logicThread.Start(); 
+            MyLogger.debug("si comincia\n");
         }
 
-        private void ShowOkMsg(string msg, MessageBoxImage icon = MessageBoxImage.Error)
+        private void ShowOkMsg(string msg, MessageBoxImage icon)
         {
             //"Errore, nome utente troppo lungo"
             string messageBoxText = msg;
-            string caption = "Errore";
+            string caption = "Info";
             MessageBoxButton button = MessageBoxButton.OK;
 
             // Display message box
@@ -414,13 +409,13 @@ namespace ProgettoClient
             {
                 buttStartStopAutoSync.Content = AUTOSYNC_ON_TEXT;
                 SyncTimer.Start();
-                MyLogger.print("AutoSync started\n");
+                MyLogger.debug("AutoSync attivato\n");
             }
             else
             {
                 buttStartStopAutoSync.Content = AUTOSYNC_OFF_TEXT;
                 SyncTimer.Stop();
-                MyLogger.print("AutoSync stopped\n");
+                MyLogger.debug("AutoSync disattivato\n");
             }
         }
 
@@ -431,7 +426,8 @@ namespace ProgettoClient
 
         private void applyPassw(string Password)
         {
-            textboxPassword.Text = Password;
+            textboxPassword.Password = Password;
+            //textboxPassword.Text = Password;
         }
 
         private void applyIP(string indIP)
@@ -448,7 +444,7 @@ namespace ProgettoClient
         {
             // Configure the message box to be displayed
             string messageBoxText = "User inesistente. Si desidera crearlo?";
-            string caption = "Word Processor";
+            string caption = "Nuovo Account";
             MessageBoxButton button = MessageBoxButton.YesNo;
             MessageBoxImage icon = MessageBoxImage.Warning;
 
@@ -475,7 +471,7 @@ namespace ProgettoClient
 
         private void ManualSync()
         {
-            MyLogger.print("Sync in corso...\n");
+            MyLogger.print("Sincronizzazione in corso...");
             bool wasAutoSyncOn = SyncTimer.IsEnabled;
 
             if (wasAutoSyncOn)
@@ -630,9 +626,14 @@ namespace ProgettoClient
 
         private void buttStartStopSync_Click(object sender, RoutedEventArgs e)
         {
-            settings.setAutoSyncToggle(!settings.getAutoSyncToggle());
+            bool toggleOn = !settings.getAutoSyncToggle();
+            settings.setAutoSyncToggle(toggleOn);
             //attivazione timer
-            setAutoSync(settings.getAutoSyncToggle());
+            setAutoSync(toggleOn);
+            if(toggleOn)
+                MyLogger.print("Sincronizzazione automatica attivata\n");
+            else
+                MyLogger.print("Sincronizzazione automatica disattivata\n");
         }
 
         private void writeInLog_RichTextBox(String message)
@@ -645,7 +646,7 @@ namespace ProgettoClient
             //TODO:non scrive
             MyLogger.print("Operazione in corso, attendere chiusura programma...");
             LogicThreadShutDown();
-            //attende chiusura thread (?)
+            //TODO: attende chiusura thread (?)
             //logicThread.Join();
             SaveSettings();
         }
@@ -742,7 +743,8 @@ namespace ProgettoClient
 
         private void textboxPassword_LostFocus(object sender, RoutedEventArgs e)
         {
-            settings.setPassw(textboxPassword.Text);
+            //settings.setPassw(textboxPassword.Text);
+            settings.setPassw(textboxPassword.Password);
         }
 
         private void textBoxPorta_LostFocus(object sender, RoutedEventArgs e)
@@ -778,7 +780,7 @@ namespace ProgettoClient
             MyLogger.debug("LogicThread starting");
             
             //todo: prox riga solo per debug
-            this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.logged);
+            //this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.logged);
 
             try //catch errori non recuperabili per il thread
             {
@@ -790,17 +792,17 @@ namespace ProgettoClient
                 //bool connected = false;
 
                 //gestione del login
-//                sm.login(settings.getUser(), settings.getPassw());
+                sm.login(settings.getUser(), settings.getPassw());
                 logged = true;
 
                 //selezione cartella
-//                sm.setRootFolder(settings.getRootFolder());
+                sm.setRootFolder(settings.getRootFolder());
 
                 //attiva modalità logged nella UI
-//                this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.logged);
+                this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.logged);
 
                 //voglio iniziare con una sync
-//                needToSync = true;
+                needToSync = true;
 
                 //è la prima sync per questa connessione
                 firstConnSync = true;
@@ -835,6 +837,7 @@ namespace ProgettoClient
                             SyncAll();
                         }
                         needToSync = false;
+                        MyLogger.print("Completata\n");
                     }
 
                     //verifica se deve richiedere l'intero ultimo backup
@@ -906,6 +909,9 @@ namespace ProgettoClient
             //disattivo il timer che sblocca periodicamente il logicThread affinchè controlli se deve abortire
             AbortTimer.Stop();
             logged = false;
+            //recoverW.Close();
+            if (recoverW != null)
+                recoverW.Dispatcher.BeginInvoke(recoverW.DelCloseWindow);
             return; //logic thread termina qui
         }
 
@@ -964,5 +970,9 @@ namespace ProgettoClient
             return TerminateLogicThread;
         }
 
+        private void buttShowPasswButton_Click(object sender, RoutedEventArgs e)
+        {
+            //this.textboxPassword
+        }
     }
 }

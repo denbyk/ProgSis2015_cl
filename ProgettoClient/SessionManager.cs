@@ -22,7 +22,7 @@ namespace ProgettoClient
     //classe che si occupa di dialogare con il server.
     class SessionManager
     {
-        private bool DEBUGGING_NO_SERVER = true; //TODO: remove
+        private bool DEBUGGING_NO_SERVER = false; //TODO: remove
 
 
         //timeout (-1 = infinito):
@@ -96,7 +96,7 @@ namespace ProgettoClient
             sendToServer(this.rootFolder);
             if (strRecCommFromServer().Equals(commFolderOk)) //dovrebbe ricevere sempre FOLDEROK
             {
-                MyLogger.print("cartella selezionata correttamente.\n");
+                MyLogger.debug("cartella selezionata correttamente.\n");
                 return true;
             }
             else
@@ -227,7 +227,7 @@ namespace ProgettoClient
                     {
                         //nome utente troppo lungo.
                         int maxLength = Int32.Parse(risp.Substring(5, 3));
-                        mainWindow.Dispatcher.Invoke(mainWindow.DelShowOkMsg, "Errore, nome utente troppo lungo. Max: " + maxLength);
+                        mainWindow.Dispatcher.Invoke(mainWindow.DelShowOkMsg, "Errore, nome utente troppo lungo. Max: " + maxLength, MessageBoxImage.Error);
                         throw new AbortLogicThreadException();
                     }
                     else
@@ -506,10 +506,26 @@ namespace ProgettoClient
         {
             try
             {
+                /*
                 byte[] file = File.ReadAllBytes(f.nameAndPath);
                 //byte[] fileBuffer = new byte[file.Length];
                 //serverStream.Write(file.ToArray(), 0, fileBuffer.GetLength(0));
                 serverStream.Write(file.ToArray(), 0, file.Length);
+                */
+                
+                const int bufsize = 1024;
+                var buffer = new byte[bufsize];
+                
+                using (var s = File.OpenRead(f.nameAndPath))
+                {
+                    int actuallyRead;
+                    while ((actuallyRead = s.Read(buffer, 0, bufsize)) > 0)
+                    {
+                        serverStream.Write(buffer, 0, actuallyRead);
+                    }
+                }
+                serverStream.Flush();
+                
             }
             catch (Exception ex)
             {
@@ -522,7 +538,7 @@ namespace ProgettoClient
         public void askForSingleFile(RecoverRecord rr)
         {
             FileStream fout;
-
+            string localFileName;
             MyLogger.print("recovering file: " + rr.rf.nameAndPath);
             sendToServer(commRecoverFile);
             waitForAck(commCmdAckFromServer);
@@ -535,7 +551,7 @@ namespace ProgettoClient
                     string caption = "attenzione";
                     //TODO sistemare prox riga. posso farlo chiedere direttamente a main thread sul click del button
                     bool wantOverwrite = (bool)mainWindow.recoverW.Dispatcher.Invoke(mainWindow.recoverW.DelYesNoQuestion, message, caption);
-                    if (wantOverwrite)
+                    if (!wantOverwrite)
                     {
                         //salvare con nome
                         throw new IOException("need to save with name");
@@ -545,18 +561,30 @@ namespace ProgettoClient
                 {
                     Directory.CreateDirectory(System.IO.Path.GetDirectoryName(rr.rf.nameAndPath));
                 }
-                fout = File.Open(rr.rf.nameAndPath, FileMode.Create);
+                localFileName = rr.rf.nameAndPath;
+                fout = File.Open(localFileName, FileMode.OpenOrCreate);
             }
-            catch (IOException e)
+            catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
             {
                 //file omonimo esiste già o altri errori nell'aprire il file. apro una dialog di salvataggio
                 Microsoft.Win32.SaveFileDialog sfd = new Microsoft.Win32.SaveFileDialog();
                 sfd.InitialDirectory = mainWindow.settings.getRootFolder();
                 sfd.FileName = rr.rf.getJustName();
                 Nullable<bool> result = sfd.ShowDialog();
+                localFileName = sfd.FileName;
                 if (result == true)
                 {
-                    fout = File.Open(sfd.FileName, FileMode.Create);
+                    try
+                    {
+                        fout = File.Open(localFileName, FileMode.Create);
+                    }
+                    catch (Exception)
+                    {
+                        //mainWindow.Dispatcher.Invoke(mainWindow.DelShowOkMsg, "Impossibile aprire il file", MessageBoxImage.Error);
+                        MyLogger.popup("Impossibile aprire il file. Operazione Annullata\n", MessageBoxImage.Error);
+                        //annullo richiesta recupero di questo file
+                        return;
+                    }
                 }
                 else
                 {
@@ -569,17 +597,30 @@ namespace ProgettoClient
             //invio nome singolo file
             sendToServer(rr.rf.nameAndPath + "\r\n" + rr.backupVersion.ToString() + "\r\n");
 
+
+            System.DateTime LastModifyDate;
             try
             {
                 //ricevi contenuto file
-                RecFileContent(rr.rf.nameAndPath, fout);
+                LastModifyDate = RecFileContent(localFileName, fout);
             }
             catch (CancelFileRequestException)
             {
                 MyLogger.print("Operazione Annullata\n");
+                fout.Close();
+                return;
+            }
+            catch (IOException)
+            {
+                MyLogger.popup("impossibile accedere al file. operazione annullata.", MessageBoxImage.Error);
+                fout.Close();
+                return;
             }
 
             fout.Close();
+
+            FileInfo fi = new FileInfo(localFileName);
+            fi.LastWriteTime = LastModifyDate;
             MyLogger.print("received\n");
         }
 
@@ -633,20 +674,22 @@ namespace ProgettoClient
         /// return true se ricezione corretta, false altrimenti
         /// </summary>
         /// <param name="fout">already opened output fileStream</param>
-        /// <returns></returns>
-        private void RecFileContent(string FileNameAndPath, FileStream fout)
+        /// <returns>last modify date of the file</returns>
+        private System.DateTime RecFileContent(string FileNameAndPath, FileStream fout)
         {
-            //TODO: sistemare apri/chiudi dei file
-
-            //invio al server della richiesta per il file specifico.
-            //"file.txt\r\n121\r\n"
-            //TODO la prox riga non vale per recoverWholeBackup. non devo mandare il nome del file io, lui mi manda il nome del file e io lo ricevo.
-            //sendToServer(rr.rf.nameAndPath + "\r\n" + rr.backupVersion.ToString() + "\r\n");
-
             //ricezione hash
             byte[] hashReceived = new byte[32];
             var count = serverStream.Read(hashReceived, 0, 32);
             string strHash = System.Text.Encoding.UTF8.GetString(hashReceived);
+            
+            //remove \r\n
+            socketReadline();
+
+            //legge dimensione del file
+            long sizeFile = Convert.ToInt64(socketReadline(), 16);
+
+            //legge data_ultima_modifica file
+            var lmfile = MyConverter.UnixTimestampToDateTime(Convert.ToInt64(socketReadline(),16));
 
             //data_rec
             sendToServer(commDataRec);
@@ -657,20 +700,32 @@ namespace ProgettoClient
                 //ricezione e salvataggio su disco.
                 var buffer = new byte[1024];
                 int bytesRead;
-                //todo: se write fallisce xkè file già aperto da altro programma lo dico all'utente
+                long totalBytesRead = 0;
+                fout.Seek(0, SeekOrigin.Begin);
                 do
                 {
                     bytesRead = serverStream.Read(buffer, 0, buffer.Length);
                     fout.Write(buffer, 0, bytesRead);
+                    totalBytesRead += bytesRead;
                 }
-                while (serverStream.DataAvailable);
+                while (totalBytesRead < sizeFile/*serverStream.DataAvailable*/);
+
+                if(totalBytesRead != sizeFile)
+                {
+                    sendToServer(commSndAgain);
+                    attempt++;
+                    if (attempt < 5)
+                        continue;
+                    else
+                        break;
+                }
 
                 //calcolo e confronto hash
-                var computedHash = RecordFile.calcHash(FileNameAndPath);
+                var computedHash = RecordFile.calcHash(FileNameAndPath, fout);
                 if (computedHash == strHash)
                 {
                     sendToServer(commDataAck);
-                    return;
+                    return lmfile;
                 }
                 else
                 {
@@ -696,6 +751,8 @@ namespace ProgettoClient
             //seleziono versione
             sendToServer(version.ToString());
 
+//mainWindow.Dispatcher.Invoke(mainWindow.DelShowOkMsg, "Ripristino versione fallita", MessageBoxImage.Error);
+
             int fileCount = recQuery.recInfos.getVersionSpecificCount(version);
 
             try
@@ -704,9 +761,7 @@ namespace ProgettoClient
                 {
 
                     //legge nome del file
-                    string fileName = strRecCommFromServer();
-                    //TODO? fileName ha anche path? suppongo di sì
-
+                    string fileName = socketReadline();
                     string newPathAndName;
                     if (recQuery.recoveringFolderPath != "")
                     {
@@ -726,30 +781,42 @@ namespace ProgettoClient
                     {
                         fout = new FileStream(newPathAndName, FileMode.Create);
                     }
-                    catch (IOException e)
+                    catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
                     {
                         //se file è protetto ne crea una copia a fianco
                         newPathAndName += "-restoredCopy";
                         fout = new FileStream(newPathAndName, FileMode.Create);
+                        MyLogger.print("impossibile ripristinare il file " + newPathAndName + ", salvo con suffisso \"restoredCopy\"");
                     }
 
+                    System.DateTime LastModifyDate;
                     try
                     {
-                        RecFileContent(newPathAndName, fout);
+                        LastModifyDate = RecFileContent(newPathAndName, fout);
+                        fout.Close();
+                        FileInfo fi = new FileInfo(newPathAndName);
+                        fi.LastWriteTime = LastModifyDate;
                     }
                     catch (CancelFileRequestException)
                     {
                         MyLogger.print("Operazione Annullata\n");
+                        return;
                     }
+                    catch(IOException)
+                    {
+                        MyLogger.popup("impossibile accedere al file. operazione interrotta.", MessageBoxImage.Error);
+                    }
+
                 }
 
-                mainWindow.Dispatcher.Invoke(mainWindow.DelShowOkMsg, "Ripristino versione completato!", MessageBoxImage.Information);
-                MyLogger.print("Ripristino versione " + recQuery.versionToRecover.ToString() + " riuscito");
+                //mainWindow.Dispatcher.Invoke(mainWindow.DelShowOkMsg, "Ripristino versione completato!", MessageBoxImage.Information);
+                //MyLogger.print("Ripristino versione " + recQuery.versionToRecover.ToString() + " riuscito");
+                MyLogger.popup("Ripristino versione " + recQuery.versionToRecover.ToString() + " riuscito", MessageBoxImage.Information);
             }
             catch (Exception e)
             {
                 MyLogger.print("ripristino fallito");
-                mainWindow.Dispatcher.Invoke(mainWindow.DelShowOkMsg, "Ripristino versione fallita");
+                mainWindow.Dispatcher.Invoke(mainWindow.DelShowOkMsg, "Ripristino versione fallita", MessageBoxImage.Error);
                 MyLogger.debug(e.ToString());
                 return;
             }

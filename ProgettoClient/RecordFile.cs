@@ -112,13 +112,25 @@ namespace ProgettoClient
             return list.Last<string>();
         }
 
-        public static string calcHash(string nameAndPath)
+        public static string calcHash(string nameAndPath, FileStream stream = null)
         {
             var md5 = MD5.Create();
-            var stream = File.OpenRead(nameAndPath);
+            bool closeStreamFlag = false;
+            if(stream == null)
+            {
+                stream = File.OpenRead(nameAndPath);
+                closeStreamFlag = true;
+            }
+
+            stream.Seek(0, SeekOrigin.Begin);
             byte[] x = md5.ComputeHash(stream); //char di 16 caratteri.
+
             string hex = BitConverter.ToString(x).Replace("-", string.Empty); //rappresentazione in esadecimale -> 32 caratteri.
-            stream.Close();
+
+            if (closeStreamFlag)
+            {
+                stream.Close();
+            }
             return hex;
         }
 

@@ -26,12 +26,13 @@
         <TextBlock HorizontalAlignment="Left" Margin="19,65,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="38" Height="17"><Run Text="Utente"/><LineBreak/><Run/></TextBlock>
         <TextBlock HorizontalAlignment="Left" Margin="156,65,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="54" Height="17"><Run Text="Password"/><LineBreak/><Run/></TextBlock>
         <TextBox x:Name="textboxUtente" HorizontalAlignment="Left" Height="19" Margin="17,87,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="120" TextAlignment="Center" LostFocus="textboxUtente_LostFocus" />
-        <TextBox x:Name="textboxPassword" HorizontalAlignment="Left" Height="19" Margin="156,87,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="120" TextAlignment="Center" LostFocus="textboxPassword_LostFocus"/>
-        <Button x:Name="buttLogin" Content="Login" HorizontalAlignment="Left" Margin="281,65,0,0" VerticalAlignment="Top" Width="52" Height="41" Click="buttLoginLogout_Click"/>
+        <PasswordBox x:Name="textboxPassword" HorizontalAlignment="Left" Height="19" Margin="156,87,0,0" VerticalAlignment="Top" Width="98" LostFocus="textboxPassword_LostFocus"/>
+        <Button x:Name="buttLogin" Content="Login" HorizontalAlignment="Left" Margin="281,37,0,0" VerticalAlignment="Top" Width="52" Height="41" Click="buttLoginLogout_Click"/>
         <TextBlock HorizontalAlignment="Left" Margin="19,15,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="75" Height="17" Text="Indirizzo IP"/>
         <TextBlock HorizontalAlignment="Left" Margin="156,15,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="75" Height="17"><Run Text="P"/><Run Text="orta"/></TextBlock>
         <TextBox x:Name="textBoxIndIP" HorizontalAlignment="Left" Height="19" Margin="17,37,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="120" LostFocus="textBoxIndIP_LostFocus"/>
-        <TextBox x:Name="textBoxPorta" HorizontalAlignment="Left" Height="19" Margin="157,37,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="53" LostFocus="textBoxPorta_LostFocus"/>
+        <TextBox x:Name="textBoxPorta" HorizontalAlignment="Left" Height="19" Margin="156,37,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Width="53" LostFocus="textBoxPorta_LostFocus"/>
+        <Button x:Name="ShowPasswButton" Content="*" HorizontalAlignment="Left" Margin="254,87,0,0" VerticalAlignment="Top" Width="22" Click="buttShowPasswButton_Click" Height="19" VerticalContentAlignment="Center"/>
 
     </Grid>
 </Window>

@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Diagnostics;
 using System.Windows.Threading;
+using System.Windows;
 
 namespace ProgettoClient
 {
@@ -12,6 +13,7 @@ namespace ProgettoClient
         MyLogger
     {
         private static MainWindow mainWindow;
+        private const bool DEBUG_TEXT_ACTIVE = false;
         
         internal static void init(MainWindow mainWindowp)
         {
@@ -26,6 +28,14 @@ namespace ProgettoClient
             mainWindow.Dispatcher.BeginInvoke(mainWindow.DelWriteLog, message);
         }
 
+        public static void popup(string message, MessageBoxImage mbi)
+        {
+            mainWindow.Dispatcher.Invoke(mainWindow.DelShowOkMsg, message, mbi);
+            mainWindow.Dispatcher.BeginInvoke(mainWindow.DelWriteLog, message);
+            Trace.WriteLine(message);
+            Trace.Flush();
+        }
+
         public static void print(Object o)
         {
             MyLogger.print(o.ToString());
@@ -38,7 +48,8 @@ namespace ProgettoClient
 
         internal static void debug(string mess)
         {
-            //TODOthrow new NotImplementedException();
+            if (!DEBUG_TEXT_ACTIVE)
+                return;
             mess = "!!! " + mess + "\n";
             Trace.WriteLine(mess);
             Trace.Flush();

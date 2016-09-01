@@ -91,7 +91,7 @@ namespace ProgettoClient
         {
             string path;
             //verifica che utente sia sicuro
-            MessageBoxResult result = MessageBox.Show("Some files may be overwritten. Do you want to save in another folder?", "Confirmation", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            MessageBoxResult result = MessageBox.Show("Alcuni file potrebbero essere sovrascritti. Vuoi ripristinare in un'altra finestra?", "Attenzione", MessageBoxButton.YesNo, MessageBoxImage.Warning);
             switch (result)
             {
                 case MessageBoxResult.Yes:
@@ -109,8 +109,8 @@ namespace ProgettoClient
                     return;
                     break;
             }
-            mainW.needToRecoverWholeBackup = true;
             mainW.RecoveringQuery = new MainWindow.RecoveringQuery_st(recInfos, versionToDisplay, path);
+            mainW.needToRecoverWholeBackup = true;
             mainW.MakeLogicThreadCycle();
         }
 
@@ -210,6 +210,29 @@ namespace ProgettoClient
         {
             recoverWholeBackup();
         }
+
+        public void setBusyInterface(bool working)
+        {
+            if (working)
+            {
+                buttRecover.IsEnabled = false;
+                buttRecoverAll.IsEnabled = false;
+            }
+            else
+            {
+                buttRecover.IsEnabled = true;
+                //setto buttRecoverAll attivo o meno a seconda di comboRecoverViewMode
+                if (comboRecoverViewMode.SelectedIndex == 0)
+                {
+                    buttRecoverAll.IsEnabled = false;
+                }
+                else
+                {
+                    buttRecoverAll.IsEnabled = true;
+                }
+            }
+        }
+
     }
 
     public class recoverListEntry

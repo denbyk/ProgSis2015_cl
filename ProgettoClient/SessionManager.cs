@@ -76,7 +76,7 @@ namespace ProgettoClient
         //private Dictionary<byte[], commandsEnum> commands;
 
         private MainWindow mainWindow;
-        
+
 
         public SessionManager(string serverIP, int serverPort, MainWindow mainWindow)
         {
@@ -223,7 +223,7 @@ namespace ProgettoClient
                     throw new AbortLogicThreadException();
                     break;
                 default:
-                    if(risp.Substring(0,5) == commNameTooLongPARTIAL)
+                    if (risp.Substring(0, 5) == commNameTooLongPARTIAL)
                     {
                         //nome utente troppo lungo.
                         int maxLength = Int32.Parse(risp.Substring(5, 3));
@@ -234,7 +234,12 @@ namespace ProgettoClient
                         throw new UnknownServerResponseException();
                     break;
             }
-            
+
+        }
+
+        public void closeConnection()
+        {
+            clientSocket.Close();
         }
 
         private void newConnection()
@@ -255,7 +260,7 @@ namespace ProgettoClient
             catch (SocketException se)
             {
                 MyLogger.print("Collegamento al server fallito\n");
-                MyLogger.print(se);
+                MyLogger.debug(se);
                 throw;
             }
             MyLogger.print("Connesso\n");
@@ -347,16 +352,19 @@ namespace ProgettoClient
             sendToServer(commInitialBackup);
             waitForAck(commCmdAckFromServer);
 
+            MyLogger.print("Primo Backup in corso...");
             foreach (var rf in RecordFileList)
             {
                 if (mainWindow.shouldIClose())
                     throw new AbortLogicThreadException();
+                MyLogger.debug("invio del file " + rf.nameAndPath);
                 sendToServer(commIBNextFile);
                 SendWholeFileToServer(rf);
+                MyLogger.debug("completato\n");
             }
             sendToServer(commIBSyncEnd);
 
-            MyLogger.print("primo backup eseguito con successo\n");
+            MyLogger.print("Primo Backup eseguito con successo\n");
         }
 
 
@@ -373,11 +381,11 @@ namespace ProgettoClient
             string res = strRecCommFromServer();
             if (res == commDELETED)
             {
-                MyLogger.print("file deleted correctly");
+                MyLogger.debug("deleted\n");
             }
             if (res == commNOTDEL)
             {
-                MyLogger.print("not existing file");
+                MyLogger.debug("file inesistente.\n");
             }
         }
 
@@ -390,7 +398,7 @@ namespace ProgettoClient
             if (strRecCommFromServer() == commBackupOkFromServer)
             {
                 SendWholeFileToServer(rf);
-                MyLogger.debug("updated");
+                MyLogger.debug("updated\n");
             }
             else
                 throw new AckErrorException();
@@ -405,7 +413,7 @@ namespace ProgettoClient
             if (strRecCommFromServer() == commBackupOkFromServer)
             {
                 SendWholeFileToServer(rf);
-                MyLogger.debug("newed");
+                MyLogger.debug("newed\n");
             }
             else
                 throw new AckErrorException();
@@ -506,13 +514,7 @@ namespace ProgettoClient
         {
             try
             {
-                /*
-                byte[] file = File.ReadAllBytes(f.nameAndPath);
-                //byte[] fileBuffer = new byte[file.Length];
-                //serverStream.Write(file.ToArray(), 0, fileBuffer.GetLength(0));
-                serverStream.Write(file.ToArray(), 0, file.Length);
-                */
-                
+                               
                 const int bufsize = 1024;
                 var buffer = new byte[bufsize];
                 
@@ -539,7 +541,7 @@ namespace ProgettoClient
         {
             FileStream fout;
             string localFileName;
-            MyLogger.print("recovering file: " + rr.rf.nameAndPath);
+            MyLogger.print("Ripristino file in corso...");
             sendToServer(commRecoverFile);
             waitForAck(commCmdAckFromServer);
             try
@@ -549,7 +551,7 @@ namespace ProgettoClient
                     //chiede se sovrascrivere
                     string message = "file già esistente. si desidera sovrascriverlo?";
                     string caption = "attenzione";
-                    //TODO sistemare prox riga. posso farlo chiedere direttamente a main thread sul click del button
+
                     bool wantOverwrite = (bool)mainWindow.recoverW.Dispatcher.Invoke(mainWindow.recoverW.DelYesNoQuestion, message, caption);
                     if (!wantOverwrite)
                     {
@@ -582,6 +584,7 @@ namespace ProgettoClient
                     {
                         //mainWindow.Dispatcher.Invoke(mainWindow.DelShowOkMsg, "Impossibile aprire il file", MessageBoxImage.Error);
                         MyLogger.popup("Impossibile aprire il file. Operazione Annullata\n", MessageBoxImage.Error);
+                        MyLogger.print("Impossibile aprire il file. Operazione Annullata\n");
                         //annullo richiesta recupero di questo file
                         return;
                     }
@@ -612,7 +615,7 @@ namespace ProgettoClient
             }
             catch (IOException)
             {
-                MyLogger.popup("impossibile accedere al file. operazione annullata.", MessageBoxImage.Error);
+                MyLogger.popup("Impossibile accedere al file. Operazione annullata.", MessageBoxImage.Error);
                 fout.Close();
                 return;
             }
@@ -621,7 +624,7 @@ namespace ProgettoClient
 
             FileInfo fi = new FileInfo(localFileName);
             fi.LastWriteTime = LastModifyDate;
-            MyLogger.print("received\n");
+            MyLogger.print("completato.\n");
         }
 
 
@@ -745,13 +748,11 @@ namespace ProgettoClient
         internal void AskForSelectedBackupVersion(MainWindow.RecoveringQuery_st recQuery)
         {
             int version = recQuery.versionToRecover;
-            MyLogger.print("recovering backup version: " + recQuery.versionToRecover);
+            MyLogger.print("Ripristino della versione " + recQuery.versionToRecover +"... ");
             sendToServer(commRecoverBackup);
             waitForAck(commCmdAckFromServer);
             //seleziono versione
             sendToServer(version.ToString());
-
-//mainWindow.Dispatcher.Invoke(mainWindow.DelShowOkMsg, "Ripristino versione fallita", MessageBoxImage.Error);
 
             int fileCount = recQuery.recInfos.getVersionSpecificCount(version);
 
@@ -763,8 +764,10 @@ namespace ProgettoClient
                     //legge nome del file
                     string fileName = socketReadline();
                     string newPathAndName;
+                    //definisce percorso dove salvare il file
                     if (recQuery.recoveringFolderPath != "")
                     {
+                        //path da usare: quello specificato da utente
                         System.Diagnostics.Debug.Assert(fileName.Contains(mainWindow.settings.getRootFolder()));
                         //elimina la rootFolder. lascia // iniziale
                         string localPath = fileName.Substring(mainWindow.settings.getRootFolder().Length);
@@ -772,9 +775,11 @@ namespace ProgettoClient
                     }
                     else
                     {
+                        //path da usare: quello originale del file
                         newPathAndName = fileName;
                     }
 
+                    //apro il file
                     FileStream fout;
                     Directory.CreateDirectory(System.IO.Path.GetDirectoryName(newPathAndName));
                     try
@@ -786,7 +791,7 @@ namespace ProgettoClient
                         //se file è protetto ne crea una copia a fianco
                         newPathAndName += "-restoredCopy";
                         fout = new FileStream(newPathAndName, FileMode.Create);
-                        MyLogger.print("impossibile ripristinare il file " + newPathAndName + ", salvo con suffisso \"restoredCopy\"");
+                        MyLogger.print("Impossibile ripristinare il file " + newPathAndName + ", salvo con suffisso \"restoredCopy\"\n");
                     }
 
                     System.DateTime LastModifyDate;
@@ -796,15 +801,19 @@ namespace ProgettoClient
                         fout.Close();
                         FileInfo fi = new FileInfo(newPathAndName);
                         fi.LastWriteTime = LastModifyDate;
+                        
                     }
                     catch (CancelFileRequestException)
                     {
                         MyLogger.print("Operazione Annullata\n");
+                        fout.Close();
                         return;
                     }
                     catch(IOException)
                     {
-                        MyLogger.popup("impossibile accedere al file. operazione interrotta.", MessageBoxImage.Error);
+                        MyLogger.popup("Impossibile accedere al file " + newPathAndName + " Operazione interrotta.", MessageBoxImage.Error);
+                        fout.Close();
+                        return;
                     }
 
                 }

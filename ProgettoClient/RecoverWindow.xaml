@@ -1,24 +1,24 @@
 ﻿<Window x:Class="ProgettoClient.RecoverWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Recover Window" Height="475.503" Width="614.894"
+        Title="Finestra di Ripristino" Height="475.503" Width="614.894"
         Icon="floppy_icone_9020_128_6xa_icon.ico">
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition/>
             <ColumnDefinition Width="0*"/>
         </Grid.ColumnDefinitions>
-        <Button x:Name="buttRecover" Content="Recover file" Margin="0,0,125,14" Click="buttRecover_click" IsEnabled="False" HorizontalAlignment="Right" Width="93" Height="22" VerticalAlignment="Bottom"/>
+        <Button x:Name="buttRecover" Content="Ripristina file" Margin="0,0,125,14" Click="buttRecover_click" IsEnabled="False" HorizontalAlignment="Right" Width="93" Height="22" VerticalAlignment="Bottom"/>
         <ListView x:Name="recoverListView" SelectionMode="Single" Margin="0,0,0,56" >
             <ListView.View>
                 <GridView>
-                    <GridViewColumn Header="Name" Width="Auto" DisplayMemberBinding="{Binding Name}" />
-                    <GridViewColumn Header="Last Modify" Width="Auto" DisplayMemberBinding="{Binding lastMod}" />
+                    <GridViewColumn Header="Nome" Width="Auto" DisplayMemberBinding="{Binding Name}" />
+                    <GridViewColumn Header="Ultima modifica" Width="Auto" DisplayMemberBinding="{Binding lastMod}" />
                 </GridView>
             </ListView.View>
         </ListView>
         <ComboBox x:Name="comboRecoverViewMode" HorizontalAlignment="Left" Margin="11,0,0,14" Width="250" SelectionChanged="comboRecoverViewMode_SelectionChanged" Height="22" VerticalAlignment="Bottom" />
-        <Button x:Name="buttRecoverAll" Content="Recover All Files" Margin="0,0,27,14" Click="buttRecoverAll_click" IsEnabled="False" Height="22" VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="93"/>
+        <Button x:Name="buttRecoverAll" Content="Ripristina tutto" Margin="0,0,27,14" Click="buttRecoverAll_click" IsEnabled="False" Height="22" VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="93"/>
         <!--SelectionChanged="comboRecoverViewMode_SelectionChanged"-->
 
     </Grid>

@@ -272,8 +272,10 @@ namespace ProgettoClient
         internal enum interfaceMode_t
         {
             logged,
-            notLogged
+            notLogged,
+            busy
         };
+        private interfaceMode_t _previousInterfaceMode = interfaceMode_t.notLogged;
         private interfaceMode_t _interfaceMode = interfaceMode_t.notLogged;
         private interfaceMode_t interfaceMode
         {
@@ -281,42 +283,91 @@ namespace ProgettoClient
             set
             {
                 //solo il mainThread deve accedere qui.
-                if (value == interfaceMode_t.logged)
+                switch (value)
                 {
-                    textboxPathSyncDir.IsEnabled = false;
-                    textboxUtente.IsEnabled = false;
-                    textboxPassword.IsEnabled = false;
-                    buttSelSyncSir.IsEnabled = false;
+                    case interfaceMode_t.logged:
+                        textBoxIndIP.IsEnabled = false;
+                        textboxPassword.IsEnabled = false;
+                        textboxPathSyncDir.IsEnabled = false;
+                        textboxUtente.IsEnabled = false;
+                        textboxPassword.IsEnabled = false;
+                        buttSelSyncSir.IsEnabled = false;
 
-                    buttLogin.Content = "Logout";
-                    buttStartStopAutoSync.IsEnabled = true;
-                    buttManualStartStopSync.IsEnabled = true;
-                    buttRecover.IsEnabled = true;
-                    textboxCycleTime.IsEnabled = true;
+                        buttLogin.Content = "Logout";
+                        buttStartStopAutoSync.IsEnabled = true;
+                        buttManualStartStopSync.IsEnabled = true;
+                        buttRecover.IsEnabled = true;
+                        textboxCycleTime.IsEnabled = true;
+                        buttLogin.IsEnabled = true;
 
-                    this.setAutoSync(settings.getAutoSyncToggle());
+                        this.setAutoSync(settings.getAutoSyncToggle());
 
-                    _interfaceMode = value;
-                }
-                else
-                {
-                    textboxPathSyncDir.IsEnabled = true;
-                    textboxUtente.IsEnabled = true;
-                    textboxPassword.IsEnabled = true;
-                    buttSelSyncSir.IsEnabled = true;
+                        if (recoverW != null)
+                            recoverW.setBusyInterface(false);
 
-                    buttLogin.Content = "Login";
-                    buttStartStopAutoSync.IsEnabled = false;
-                    buttManualStartStopSync.IsEnabled = false;
-                    buttRecover.IsEnabled = false;
-                    textboxCycleTime.IsEnabled = false;
+                        _interfaceMode = value;
+                        break;
+                    case interfaceMode_t.notLogged:
+                        textBoxIndIP.IsEnabled = true;
+                        textboxPassword.IsEnabled = true;
+                        textboxPathSyncDir.IsEnabled = true;
+                        textboxUtente.IsEnabled = true;
+                        textboxPassword.IsEnabled = true;
+                        buttSelSyncSir.IsEnabled = true;
+                        buttLogin.IsEnabled = true;
+                        buttLogin.Content = "Login";
 
-                    this.setAutoSync(false);
+                        buttStartStopAutoSync.IsEnabled = false;
+                        buttManualStartStopSync.IsEnabled = false;
+                        buttRecover.IsEnabled = false;
+                        textboxCycleTime.IsEnabled = false;
 
-                    _interfaceMode = value;
+                        this.setAutoSync(false);
+
+                        if (recoverW != null)
+                            recoverW.setBusyInterface(false);
+
+                        _interfaceMode = value;
+                        break;
+                    case interfaceMode_t.busy:
+                        if (_interfaceMode == interfaceMode_t.busy)
+                            break;
+                        _previousInterfaceMode = _interfaceMode;
+
+                        //textBoxIndIP.IsEnabled = false;
+                        //textboxPassword.IsEnabled = false;
+                        //textboxPathSyncDir.IsEnabled = false;
+                        //textboxUtente.IsEnabled = false;
+                        //textboxPassword.IsEnabled = false;
+                        buttSelSyncSir.IsEnabled = false;
+
+                        buttLogin.IsEnabled = false;
+                        buttStartStopAutoSync.IsEnabled = false;
+                        buttManualStartStopSync.IsEnabled = false;
+                        buttRecover.IsEnabled = false;
+                        //textboxCycleTime.IsEnabled = true;
+
+                        //todo:disattivare tasti di recoverW
+                        if (recoverW != null)
+                            recoverW.setBusyInterface(true);
+
+                        this.setAutoSync(settings.getAutoSyncToggle());
+
+                        _interfaceMode = value;
+
+                        break;
+                    default:
+                        break;
                 }
             }
         }
+
+        public void unBusyInterface()
+        {
+            _interfaceMode = _previousInterfaceMode;
+            recoverW.setBusyInterface(false);
+        }
+
 
         /// <summary>
         ///modificandone il valore il timer si blocca e va fatto partire.
@@ -492,7 +543,7 @@ namespace ProgettoClient
         {
             //myLogger usa delegati, troppo lenti alla chiusura del programma. uso direttamente append()
             //MyLogger.print("chiusura programma in corso...");
-            Log_RichTextBox.AppendText("chiusura programma in corso...\n");
+            Log_RichTextBox.AppendText("Chiusura programma in corso...\n");
             if (logicThread == null)
                 return;
             TerminateLogicThread = true;
@@ -500,6 +551,16 @@ namespace ProgettoClient
             MakeLogicThreadCycle();
             //attende chiusura del logicThread se non è già chiuso
             if (logicThread.IsAlive == true) logicThread.Join();
+            //reset richieste logicthread
+            resetLogicThreadNeeds();
+        }
+
+        private void resetLogicThreadNeeds()
+        {
+            needToAskForFileToRecover = false;
+            needToAskRecoverInfo = false;
+            needToRecoverWholeBackup = false;
+            needToSync = false;
         }
 
         private void ApplySettings()
@@ -666,7 +727,7 @@ namespace ProgettoClient
                 settings.setCycleTime(num);
             }
             applyScanInterval(settings.getCycleTime());
-            MyLogger.print("cycle time = " + settings.getCycleTime());
+            MyLogger.debug("cycle time = " + settings.getCycleTime());
 
         }
 
@@ -780,10 +841,13 @@ namespace ProgettoClient
             MyLogger.debug("LogicThread starting");
             
             //todo: prox riga solo per debug
-            //this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.logged);
+            this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.busy);
 
             try //catch errori non recuperabili per il thread
             {
+                //reset richieste eventualmente vecchie per il logic thread
+                resetLogicThreadNeeds();
+
                 //avvio tmer per verifica abort signals periodicamente
                 AbortTimer.Start();
 
@@ -813,6 +877,8 @@ namespace ProgettoClient
                     //verifica se deve sincronizzare
                     if (needToSync)
                     {
+                        this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.busy);
+
                         // se è la prima sincronizzazione di questa connessione al server, crea DirMonitor
                         if (firstConnSync)
                         {
@@ -837,35 +903,49 @@ namespace ProgettoClient
                             SyncAll();
                         }
                         needToSync = false;
+                        this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.logged);
                         MyLogger.print("Completata\n");
                     }
 
                     //verifica se deve richiedere l'intero ultimo backup
                     if (needToRecoverWholeBackup)
                     {
+                        this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.busy);
+
                         sm.AskForSelectedBackupVersion(RecoveringQuery);
                         needToRecoverWholeBackup = false;
+
+                        this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.logged);
                     }
 
                     //verifica se deve richiedere dati per ripristino di file vecchi
                     if (needToAskRecoverInfo)
                     {
+                        this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.busy);
+
                         var recInfos = sm.askForRecoverInfo();
                         needToAskRecoverInfo = false;
 
                         System.Diagnostics.Debug.Assert(recoverW != null);
 
                         recoverW.Dispatcher.Invoke(DelSetRecoverInfos, recInfos);
+
+                        this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.logged);
                     }
 
                     //recupera recoverRecord
                     if (needToAskForFileToRecover)
                     {
+                        this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.busy);
+
                         //recupera file
                         sm.askForSingleFile(fileToRecover);
 
                         needToAskForFileToRecover = false;
+
+                        this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.logged);
                     }
+
                     WaitForSyncTime();
                 }
 
@@ -906,10 +986,13 @@ namespace ProgettoClient
                 //se no mainThread va in join e va in deadlock (non esegue invoke())
                 this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.notLogged);
             }
+
+            sm.closeConnection();
             //disattivo il timer che sblocca periodicamente il logicThread affinchè controlli se deve abortire
             AbortTimer.Stop();
+            //this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.notLogged);
             logged = false;
-            //recoverW.Close();
+            //TODO: ma quando chiudo recoverW diventa null?
             if (recoverW != null)
                 recoverW.Dispatcher.BeginInvoke(recoverW.DelCloseWindow);
             return; //logic thread termina qui
@@ -942,24 +1025,31 @@ namespace ProgettoClient
         {
             //TODO:? implementare un meccanismo di abort tra un file e l'altro almeno.
             HashSet<RecordFile> buffer;
+            MyLogger.print("Sincronizzazione file aggiornati...");
             buffer = d.getUpdatedFiles();
             foreach (var f in buffer)
             {
                 sm.syncUpdatedFile(f);
                 d.confirmSync(f);
             }
+            MyLogger.print("Ok.\n");
+            MyLogger.print("Sincronizzazione nuovi file...");
             buffer = d.getNewFiles();
             foreach (var f in buffer)
             {
                 sm.syncNewFiles(f);
                 d.confirmSync(f);
             }
+            MyLogger.print("Ok.\n");
+            MyLogger.print("Sincronizzazione file cancellati...");
             buffer = d.getDeletedFiles();
             foreach (var f in buffer)
             {
                 sm.syncDeletedFile(f);
                 d.confirmSync(f, true);
             }
+            MyLogger.print("Ok.\n");
+            MyLogger.print("Sincronizzazione completata.\n");
         }
 
         /// <summary>
@@ -970,9 +1060,16 @@ namespace ProgettoClient
             return TerminateLogicThread;
         }
 
-        private void buttShowPasswButton_Click(object sender, RoutedEventArgs e)
+        private void buttShowPasswButton_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            //this.textboxPassword
+            textBoxClearPassword.Visibility = Visibility.Visible;
+            textBoxClearPassword.Text = textboxPassword.Password;
+        }
+
+        private void buttShowPasswButton_MouseUp(object sender, MouseButtonEventArgs e)
+        {
+            textBoxClearPassword.Visibility = Visibility.Hidden;
+            textBoxClearPassword.Text = "";
         }
     }
 }

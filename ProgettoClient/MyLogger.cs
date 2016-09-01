@@ -55,5 +55,9 @@ namespace ProgettoClient
             Trace.Flush();
             mainWindow.Dispatcher.BeginInvoke(mainWindow.DelWriteLog, mess);
         }
+        public static void debug(Object o)
+        {
+            MyLogger.debug(o.ToString());
+        }
     }
 }

@@ -520,54 +520,38 @@ namespace ProgettoClient
         
         private void sendFileContent(RecordFile f)
         {
-            /*    int progressValue = 0;
-                do
-                {
-                    bytesRead = serverStream.Read(buffer, 0, buffer.Length);
-                    fout.Write(buffer, 0, bytesRead);
-                    totalBytesRead += bytesRead;
-                    
-                    //aggiorna progress bar
-                    if (totalBytesRead % stepSize == 0)
-                    {
-                        progressValue += 10;
-                        mainWindow.Dispatcher.BeginInvoke(mainWindow.DelSetProgressValue, progressValue);
-                    }
-                }
-                while (totalBytesRead < sizeFile);
-
-            mainWindow.Dispatcher.BeginInvoke(mainWindow.DelSetProgressValue, 100);
-            */
             try
             {
                                
                 const int bufsize = 1024;
                 var buffer = new byte[bufsize];
                 int actuallyRead = 0;
+
                 long sizeFile = 0;
                 long totalBytesRead = 0;
-                int progressValue = 0;
-                long stepSize = (sizeFile / 1024) / 10;
+                long nextStep = 0;
+                long stepSize;
 
                 using (var s = File.OpenRead(f.nameAndPath))
                 {
                     sizeFile = s.Length;
-                    
+                    stepSize = (long)Math.Ceiling((double)sizeFile / 10);
+
                     while ((actuallyRead = s.Read(buffer, 0, bufsize)) > 0)
                     {
                         serverStream.Write(buffer, 0, actuallyRead);
-                        
+
                         //aggiorna progress bar
                         totalBytesRead += actuallyRead;
-                        if (totalBytesRead % stepSize == 0)
+                        if (totalBytesRead > nextStep)
                         {
-                            progressValue += 10;
-                            mainWindow.Dispatcher.BeginInvoke(mainWindow.DelSetProgressValue, progressValue);
+                            mainWindow.Dispatcher.BeginInvoke(mainWindow.DelSetProgressValues, sizeFile, 0, totalBytesRead);
+                            nextStep += stepSize;
                         }
                     }
                 }
                 serverStream.Flush();
-                
+                mainWindow.Dispatcher.BeginInvoke(mainWindow.DelSetProgressValues, sizeFile, 0, sizeFile);
             }
             catch (Exception ex)
             {
@@ -758,25 +742,27 @@ namespace ProgettoClient
                 int bytesRead;
                 long totalBytesRead = 0;
                 fout.Seek(0, SeekOrigin.Begin);
+                
                 //step della progress bar
-                long stepSize = (sizeFile / 1024) / 10;
-                int progressValue = 0;
+                long stepSize = (long)Math.Ceiling((double)sizeFile / 10);
+                long nextStep = 0;
+
                 do
                 {
                     bytesRead = serverStream.Read(buffer, 0, buffer.Length);
                     fout.Write(buffer, 0, bytesRead);
                     totalBytesRead += bytesRead;
-                    
+
                     //aggiorna progress bar
-                    if (totalBytesRead % stepSize == 0)
+                    if (totalBytesRead > nextStep)
                     {
-                        progressValue += 10;
-                        mainWindow.Dispatcher.BeginInvoke(mainWindow.DelSetProgressValue, progressValue);
+                        mainWindow.recoverW.Dispatcher.BeginInvoke(mainWindow.recoverW.DelSetRecProgressValues, sizeFile, 0, totalBytesRead);
+                        nextStep += stepSize;
                     }
                 }
-                while (totalBytesRead < sizeFile/*serverStream.DataAvailable*/);
+                while (totalBytesRead < sizeFile);
 
-                mainWindow.Dispatcher.BeginInvoke(mainWindow.DelSetProgressValue, 100);
+                mainWindow.recoverW.Dispatcher.BeginInvoke(mainWindow.recoverW.DelSetRecProgressValues, sizeFile, 0, sizeFile);
 
                 if (totalBytesRead != sizeFile)
                 {

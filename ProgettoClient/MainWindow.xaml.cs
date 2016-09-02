@@ -46,8 +46,8 @@ namespace ProgettoClient
         public delegate void ShowOkMsg_dt(string s, MessageBoxImage icon);
         public ShowOkMsg_dt DelShowOkMsg;
 
-        public delegate void SetProgressValue_dt(int value);
-        public SetProgressValue_dt DelSetProgressValue;
+        public delegate void SetProgressValue_dt(long max, long min, long value);
+        public SetProgressValue_dt DelSetProgressValues;
 
         private const string SETTINGS_FILE_PATH = "Settings.bin";
         private const string AUTOSYNC_OFF_TEXT = "Start";
@@ -327,6 +327,8 @@ namespace ProgettoClient
                         buttRecover.IsEnabled = false;
                         textboxCycleTime.IsEnabled = false;
 
+                        ProgBar.Value = 0;
+
                         this.setAutoSync(false);
 
                         if (recoverW != null)
@@ -358,7 +360,7 @@ namespace ProgettoClient
                         if (recoverW != null)
                             recoverW.setBusyInterface(true);
 
-                        this.setAutoSync(settings.getAutoSyncToggle());
+                        //this.setAutoSync(false);
 
                         _interfaceMode = value;
 
@@ -409,7 +411,7 @@ namespace ProgettoClient
             DelSetInterfaceLoggedMode = SetInterfaceLoggedMode;
             //DelYesNoQuestion = AskYesNoQuestion;
             DelShowOkMsg = ShowOkMsg;
-            DelSetProgressValue = SetProgressValue;
+            DelSetProgressValues = SetProgressValues;
 
             //init accessory classes
             MyLogger.init(this);
@@ -435,8 +437,10 @@ namespace ProgettoClient
             MyLogger.debug("si comincia\n");
         }
 
-        private void SetProgressValue(int value)
+        private void SetProgressValues(long max, long min, long value)
         {
+            ProgBar.Minimum = min;
+            ProgBar.Maximum = max;
             ProgBar.Value = value;
         }
 
@@ -451,7 +455,7 @@ namespace ProgettoClient
             MessageBox.Show(messageBoxText, caption, button, icon);
         }
 
-        private void SetInterfaceLoggedMode(interfaceMode_t im)
+        internal void SetInterfaceLoggedMode(interfaceMode_t im)
         {
             interfaceMode = im;
         }
@@ -571,7 +575,8 @@ namespace ProgettoClient
         {
             this.textboxPathSyncDir.Text = settings.getRootFolder();
             this.applyScanInterval(settings.getCycleTime());
-            this.setAutoSync(settings.getAutoSyncToggle());
+            //already done by the interfaceMode
+            //this.setAutoSync(settings.getAutoSyncToggle());
             this.applyUser(settings.getUser());
             this.applyPassw(settings.getPassw());
             this.applyIP(settings.getIP());
@@ -636,7 +641,6 @@ namespace ProgettoClient
 
         private void SyncTimerHandler(object sender, EventArgs e)
         {
-            MyLogger.print("AutoSync in corso\n");
             needToSync = true;
             MakeLogicThreadCycle(); //permette al logicThread di procedere.
 
@@ -883,6 +887,8 @@ namespace ProgettoClient
                     {
                         this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.busy);
 
+                        MyLogger.print("AutoSync in corso\n");
+
                         // se è la prima sincronizzazione di questa connessione al server, crea DirMonitor
                         if (firstConnSync)
                         {
@@ -934,7 +940,8 @@ namespace ProgettoClient
 
                         recoverW.Dispatcher.Invoke(DelSetRecoverInfos, recInfos);
 
-                        this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.logged);
+                        //qui l'interfaccia sarà resettata dalla recoverwindow che si chiude
+                        //this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.logged);
                     }
 
                     //recupera recoverRecord

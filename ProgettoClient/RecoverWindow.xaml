@@ -20,7 +20,7 @@
         </ListView>
         <ComboBox x:Name="comboRecoverViewMode" HorizontalAlignment="Left" Margin="11,0,0,14" Width="250" SelectionChanged="comboRecoverViewMode_SelectionChanged" Height="22" VerticalAlignment="Bottom" />
         <Button x:Name="buttRecoverAll" Content="Ripristina tutto" Margin="0,0,27,14" Click="buttRecoverAll_click" IsEnabled="False" Height="22" VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="93"/>
-        <ProgressBar x:Name="RecProgBar" Margin="0,336,0,0" Minimum="0" Maximum="100" Value="75" Height="22" VerticalAlignment="Top"  />
+        <ProgressBar x:Name="RecProgBar" Margin="0,336,0,0" Minimum="0" Maximum="100" Value="0" Height="22" VerticalAlignment="Top"  />
 
     </Grid>
 </Window>

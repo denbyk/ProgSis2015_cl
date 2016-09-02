@@ -37,8 +37,8 @@ namespace ProgettoClient
         public delegate void DelCloseWindow_dt();
         public DelCloseWindow_dt DelCloseWindow;
 
-        public delegate void SetRecProgressValue_dt(int value);
-        public SetRecProgressValue_dt DelSetRecProgressValue;
+        public delegate void SetRecProgressValue_dt(long max, long min, long value);
+        public SetRecProgressValue_dt DelSetRecProgressValues;
 
         internal RecoverInfos recInfos;
 
@@ -50,7 +50,7 @@ namespace ProgettoClient
             this.mainW = mainW;
             DelYesNoQuestion = AskYesNoQuestion;
             DelCloseWindow = () => { this.Close(); return; };
-            DelSetRecProgressValue = SetRecProgressValue;
+            DelSetRecProgressValues = SetRecProgressValues;
 
             RecoverEntryList = new List<recoverListEntry>();
             RecoverEntryList.Add( new recoverListEntry() { Name = "Caricamento in corso...", lastMod = ""});
@@ -65,8 +65,10 @@ namespace ProgettoClient
             this.buttRecover.IsEnabled = false;
         }
 
-        private void SetRecProgressValue(int value)
+        private void SetRecProgressValues(long max, long min, long value)
         {
+            RecProgBar.Minimum = min;
+            RecProgBar.Maximum = max;
             RecProgBar.Value = value;
         }
 
@@ -101,7 +103,7 @@ namespace ProgettoClient
         {
             string path;
             //verifica che utente sia sicuro
-            MessageBoxResult result = MessageBox.Show("Alcuni file potrebbero essere sovrascritti. Vuoi ripristinare in un'altra finestra?", "Attenzione", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            MessageBoxResult result = MessageBox.Show("Alcuni file potrebbero essere sovrascritti. Vuoi ripristinare in un'altra cartella?", "Attenzione", MessageBoxButton.YesNo, MessageBoxImage.Warning);
             switch (result)
             {
                 case MessageBoxResult.Yes:
@@ -258,6 +260,7 @@ namespace ProgettoClient
         private void RecoverWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             mainW.resumeAutoSync();
+            mainW.DelSetInterfaceLoggedMode(mainW.logged ? MainWindow.interfaceMode_t.logged : MainWindow.interfaceMode_t.notLogged);
         }
     }
 

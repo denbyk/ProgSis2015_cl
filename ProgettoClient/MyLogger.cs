@@ -13,7 +13,7 @@ namespace ProgettoClient
         MyLogger
     {
         private static MainWindow mainWindow;
-        private const bool DEBUG_TEXT_ACTIVE = false;
+        private const bool DEBUG_TEXT_ACTIVE = true;
         
         internal static void init(MainWindow mainWindowp)
         {
@@ -50,7 +50,7 @@ namespace ProgettoClient
         {
             if (!DEBUG_TEXT_ACTIVE)
                 return;
-            mess = "!!! " + mess + "\n";
+            mess = "!!! " + mess;
             Trace.WriteLine(mess);
             Trace.Flush();
             mainWindow.Dispatcher.BeginInvoke(mainWindow.DelWriteLog, mess);

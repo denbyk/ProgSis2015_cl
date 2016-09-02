@@ -96,8 +96,12 @@ namespace ProgettoClient
 
         public HashSet<RecordFile> getDeleted() //?? posso tornare l'oggetto private??
         {
-            if (!Updating)
-                throw new InvalidOperationException("you can't request deleted records while not updating file status");
+            if (deletedFileNames == null)
+                return new HashSet<RecordFile>();
+
+            //TODO? rimuovere tutti i riferimenti ad Updating?
+            //if (!Updating)
+            //    throw new InvalidOperationException("you can't request deleted records while not updating file status");
             Updating = false;
             var res = new HashSet<RecordFile>();
             

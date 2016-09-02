@@ -43,7 +43,7 @@ namespace ProgettoClient
 
         public static void line()
         {
-            MyLogger.print("-----------------------------------------------\n");
+            MyLogger.debug("-----------------------------------------------\n");
         }
 
         internal static void debug(string mess)

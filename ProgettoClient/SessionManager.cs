@@ -26,7 +26,7 @@ namespace ProgettoClient
 
 
         //timeout (-1 = infinito):
-        private int cnstReadTimeout = 5000; //ms
+        private int cnstReadTimeout = 5000; //ms /*5000000;*/
         private const int commLength = 8;
         private const string commLogin_str = "LOGIN___";
         private const string commAcc_str = "CREATEAC";
@@ -334,14 +334,22 @@ namespace ProgettoClient
 
         internal void logout()
         {
-            sendToServer(commLogout_str);
-            MyLogger.print("disconnessione in corso...");
+            try
+            {
+                sendToServer(commLogout_str);
+                MyLogger.print("disconnessione in corso...");
 
-            waitForAck(commCmdAckFromServer);
+                //todo: da qui esce una socketexception da catchare
+                waitForAck(commCmdAckFromServer);
 
-            MyLogger.print("disconnessione effettuata\n");
+                MyLogger.print("disconnessione effettuata\n");
 
-            mainWindow.logged = false;
+                mainWindow.logged = false;
+            }
+            catch(Exception e)
+            {
+                MyLogger.debug(e);
+            }
         }
 
 
@@ -448,7 +456,7 @@ namespace ProgettoClient
                 int numVers = Convert.ToInt32(socketReadline());
                 if (numVers == 0)
                 {
-                    MyLogger.print("primo bakup necessario");
+                    MyLogger.debug("primo backup necessario");
                     return null;
                 }
                 int nFile;
@@ -512,18 +520,50 @@ namespace ProgettoClient
         
         private void sendFileContent(RecordFile f)
         {
+            /*    int progressValue = 0;
+                do
+                {
+                    bytesRead = serverStream.Read(buffer, 0, buffer.Length);
+                    fout.Write(buffer, 0, bytesRead);
+                    totalBytesRead += bytesRead;
+                    
+                    //aggiorna progress bar
+                    if (totalBytesRead % stepSize == 0)
+                    {
+                        progressValue += 10;
+                        mainWindow.Dispatcher.BeginInvoke(mainWindow.DelSetProgressValue, progressValue);
+                    }
+                }
+                while (totalBytesRead < sizeFile);
+
+            mainWindow.Dispatcher.BeginInvoke(mainWindow.DelSetProgressValue, 100);
+            */
             try
             {
                                
                 const int bufsize = 1024;
                 var buffer = new byte[bufsize];
-                
+                int actuallyRead = 0;
+                long sizeFile = 0;
+                long totalBytesRead = 0;
+                int progressValue = 0;
+                long stepSize = (sizeFile / 1024) / 10;
+
                 using (var s = File.OpenRead(f.nameAndPath))
                 {
-                    int actuallyRead;
+                    sizeFile = s.Length;
+                    
                     while ((actuallyRead = s.Read(buffer, 0, bufsize)) > 0)
                     {
                         serverStream.Write(buffer, 0, actuallyRead);
+                        
+                        //aggiorna progress bar
+                        totalBytesRead += actuallyRead;
+                        if (totalBytesRead % stepSize == 0)
+                        {
+                            progressValue += 10;
+                            mainWindow.Dispatcher.BeginInvoke(mainWindow.DelSetProgressValue, progressValue);
+                        }
                     }
                 }
                 serverStream.Flush();
@@ -550,7 +590,7 @@ namespace ProgettoClient
                 {
                     //chiede se sovrascrivere
                     string message = "file già esistente. si desidera sovrascriverlo?";
-                    string caption = "attenzione";
+                    string caption = "Attenzione!";
 
                     bool wantOverwrite = (bool)mainWindow.recoverW.Dispatcher.Invoke(mainWindow.recoverW.DelYesNoQuestion, message, caption);
                     if (!wantOverwrite)
@@ -611,12 +651,14 @@ namespace ProgettoClient
             {
                 MyLogger.print("Operazione Annullata\n");
                 fout.Close();
+                deleteFile(localFileName);
                 return;
             }
             catch (IOException)
             {
                 MyLogger.popup("Impossibile accedere al file. Operazione annullata.", MessageBoxImage.Error);
                 fout.Close();
+                deleteFile(localFileName);
                 return;
             }
 
@@ -627,7 +669,18 @@ namespace ProgettoClient
             MyLogger.print("completato.\n");
         }
 
-
+        private void deleteFile(string fileName)
+        {
+            try
+            {
+                File.Delete(fileName);
+            }
+            catch(Exception e)
+            {
+                MyLogger.print("impossibile eliminare il file errato: " + fileName);
+                MyLogger.debug(e);
+            }
+        }
 
         private void SendWholeFileToServer(RecordFile rf)
         {
@@ -705,15 +758,27 @@ namespace ProgettoClient
                 int bytesRead;
                 long totalBytesRead = 0;
                 fout.Seek(0, SeekOrigin.Begin);
+                //step della progress bar
+                long stepSize = (sizeFile / 1024) / 10;
+                int progressValue = 0;
                 do
                 {
                     bytesRead = serverStream.Read(buffer, 0, buffer.Length);
                     fout.Write(buffer, 0, bytesRead);
                     totalBytesRead += bytesRead;
+                    
+                    //aggiorna progress bar
+                    if (totalBytesRead % stepSize == 0)
+                    {
+                        progressValue += 10;
+                        mainWindow.Dispatcher.BeginInvoke(mainWindow.DelSetProgressValue, progressValue);
+                    }
                 }
                 while (totalBytesRead < sizeFile/*serverStream.DataAvailable*/);
 
-                if(totalBytesRead != sizeFile)
+                mainWindow.Dispatcher.BeginInvoke(mainWindow.DelSetProgressValue, 100);
+
+                if (totalBytesRead != sizeFile)
                 {
                     sendToServer(commSndAgain);
                     attempt++;
@@ -807,12 +872,14 @@ namespace ProgettoClient
                     {
                         MyLogger.print("Operazione Annullata\n");
                         fout.Close();
+                        deleteFile(newPathAndName);
                         return;
                     }
                     catch(IOException)
                     {
                         MyLogger.popup("Impossibile accedere al file " + newPathAndName + " Operazione interrotta.", MessageBoxImage.Error);
                         fout.Close();
+                        deleteFile(newPathAndName);
                         return;
                     }
 
@@ -831,8 +898,10 @@ namespace ProgettoClient
             }
         }
 
-    
-
+        //internal bool checkSocketStillOpen()
+        //{
+        //    return clientSocket.Connected;
+        //}
     }
 
     class DoubleConnectionException : Exception { }

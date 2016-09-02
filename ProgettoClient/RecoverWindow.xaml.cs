@@ -37,15 +37,21 @@ namespace ProgettoClient
         public delegate void DelCloseWindow_dt();
         public DelCloseWindow_dt DelCloseWindow;
 
+        public delegate void SetRecProgressValue_dt(int value);
+        public SetRecProgressValue_dt DelSetRecProgressValue;
+
         internal RecoverInfos recInfos;
 
 
         public RecoverWindow(MainWindow mainW)
         {
+
             InitializeComponent();
             this.mainW = mainW;
             DelYesNoQuestion = AskYesNoQuestion;
             DelCloseWindow = () => { this.Close(); return; };
+            DelSetRecProgressValue = SetRecProgressValue;
+
             RecoverEntryList = new List<recoverListEntry>();
             RecoverEntryList.Add( new recoverListEntry() { Name = "Caricamento in corso...", lastMod = ""});
             recoverListView.ItemsSource = RecoverEntryList;
@@ -59,6 +65,10 @@ namespace ProgettoClient
             this.buttRecover.IsEnabled = false;
         }
 
+        private void SetRecProgressValue(int value)
+        {
+            RecProgBar.Value = value;
+        }
 
         private bool AskYesNoQuestion(string messageBoxText, string caption)
         {
@@ -118,6 +128,10 @@ namespace ProgettoClient
         {
             //ottieni elemento selezionato
             RListRecoveringEntry = (recoverListView.SelectedItem as recoverListEntry);
+            if (RListRecoveringEntry == null)
+            {
+                return;
+            }
             //affida a thread logico compito di recuperare il file 
             //salvo recoverRecord nella proprietò thread-safe di mainWindow.
             mainW.fileToRecover = RListRecoveringEntry.rr;
@@ -138,13 +152,16 @@ namespace ProgettoClient
 
         internal void setRecoverInfos(RecoverInfos recInfos)
         {
-            this.recInfos = recInfos;
+            if (recInfos != null)
+                this.recInfos = recInfos;
             showRecoverInfos();
             updateRecoverViewModes();
         }
 
         private void updateRecoverViewModes()
         {
+            if (recInfos == null)
+                return;
             IEnumerable<int> vnumbs = recInfos.getBackupVersionNumbers().Distinct();
             foreach (var n in vnumbs)
             {
@@ -183,6 +200,11 @@ namespace ProgettoClient
 
         private void ShowFilesFromEveryBackup()
         {
+            if (recInfos == null)
+            {
+                return;
+            }
+
             List<RecoverRecord> rrlist = recInfos.getRecoverUniqueList();
             foreach (RecoverRecord rec in rrlist)
             {
@@ -233,6 +255,10 @@ namespace ProgettoClient
             }
         }
 
+        private void RecoverWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            mainW.resumeAutoSync();
+        }
     }
 
     public class recoverListEntry

@@ -46,9 +46,10 @@ namespace ProgettoClient
         public delegate void ShowOkMsg_dt(string s, MessageBoxImage icon);
         public ShowOkMsg_dt DelShowOkMsg;
 
+        public delegate void SetProgressValue_dt(int value);
+        public SetProgressValue_dt DelSetProgressValue;
+
         private const string SETTINGS_FILE_PATH = "Settings.bin";
-        //todo?
-        private const bool DEBUG_DONT_LOGIN = true;
         private const string AUTOSYNC_OFF_TEXT = "Start";
         private const string AUTOSYNC_ON_TEXT = "Stop";
 
@@ -292,6 +293,8 @@ namespace ProgettoClient
                         textboxUtente.IsEnabled = false;
                         textboxPassword.IsEnabled = false;
                         buttSelSyncSir.IsEnabled = false;
+                        textBoxPorta.IsEnabled = false;
+                        ShowPasswButton.IsEnabled = false;
 
                         buttLogin.Content = "Logout";
                         buttStartStopAutoSync.IsEnabled = true;
@@ -316,6 +319,8 @@ namespace ProgettoClient
                         buttSelSyncSir.IsEnabled = true;
                         buttLogin.IsEnabled = true;
                         buttLogin.Content = "Login";
+                        textBoxPorta.IsEnabled = true;
+                        ShowPasswButton.IsEnabled = true;
 
                         buttStartStopAutoSync.IsEnabled = false;
                         buttManualStartStopSync.IsEnabled = false;
@@ -340,6 +345,8 @@ namespace ProgettoClient
                         //textboxUtente.IsEnabled = false;
                         //textboxPassword.IsEnabled = false;
                         buttSelSyncSir.IsEnabled = false;
+                        //textBoxPorta.IsEnabled = false;
+                        ShowPasswButton.IsEnabled = false;
 
                         buttLogin.IsEnabled = false;
                         buttStartStopAutoSync.IsEnabled = false;
@@ -387,13 +394,13 @@ namespace ProgettoClient
         private SessionManager sm;
         public RecoverWindow recoverW;
         private bool firstConnSync;
-        
+        private bool previousAutoSyncState;
+
 
         public MainWindow()
         {
             //init UI
             InitializeComponent();
-            
 
             //init delegates
             DelWriteLog = writeInLog_RichTextBox;
@@ -402,6 +409,7 @@ namespace ProgettoClient
             DelSetInterfaceLoggedMode = SetInterfaceLoggedMode;
             //DelYesNoQuestion = AskYesNoQuestion;
             DelShowOkMsg = ShowOkMsg;
+            DelSetProgressValue = SetProgressValue;
 
             //init accessory classes
             MyLogger.init(this);
@@ -425,6 +433,11 @@ namespace ProgettoClient
 
             //let's start
             MyLogger.debug("si comincia\n");
+        }
+
+        private void SetProgressValue(int value)
+        {
+            ProgBar.Value = value;
         }
 
         private void ShowOkMsg(string msg, MessageBoxImage icon)
@@ -514,12 +527,6 @@ namespace ProgettoClient
             return false;
         }
 
-
-        //private void cleanRecoveredEntryList()
-        //{
-        //    recoverW.cleanRecovered();
-        //}
-
         private void ManualSync()
         {
             MyLogger.print("Sincronizzazione in corso...");
@@ -537,20 +544,17 @@ namespace ProgettoClient
         }
 
         /// <summary>
-        /// per chiudere il LogicThread in modo ordinato.
+        /// per chiudere il LogicThread in modo ordinato (salvo se forceshutdown = true).
         /// </summary>
-        private void LogicThreadShutDown()
+        private void LogicThreadShutDown(bool forceShutdown = false)
         {
-            //myLogger usa delegati, troppo lenti alla chiusura del programma. uso direttamente append()
-            //MyLogger.print("chiusura programma in corso...");
-            Log_RichTextBox.AppendText("Chiusura programma in corso...\n");
             if (logicThread == null)
                 return;
             TerminateLogicThread = true;
             CheckForAbortSignaled = true;
             MakeLogicThreadCycle();
-            //attende chiusura del logicThread se non è già chiuso
-            if (logicThread.IsAlive == true) logicThread.Join();
+            //attende chiusura del logicThread se non è già chiuso (e se non uso forceshutdown).
+            if (logicThread.IsAlive == true && !forceShutdown) logicThread.Join();
             //reset richieste logicthread
             resetLogicThreadNeeds();
         }
@@ -618,7 +622,6 @@ namespace ProgettoClient
             {
                 try
                 {
-                    //TODO: ma questa riga che a volte crea problemi, serve mai? quando faccio partire il logicThread tramite MakeLogicThreadStart??
                     logicThread.Start();
                     return;
                 }
@@ -648,29 +651,6 @@ namespace ProgettoClient
             CycleNowEvent.Set(); //permette al logicThread di procedere.
             AbortTimer.Start();
         }
-
-
-        /*private bool AskYesNoQuestion(string messageBoxText, string caption, MessageBoxImage icon = MessageBoxImage.Question)
-        {
-            // Configure the message box to be displayed
-            MessageBoxButton button = MessageBoxButton.YesNo;
-
-            // Display message box
-            MessageBoxResult result = MessageBox.Show(messageBoxText, caption, button, icon);
-
-            // Process message box results
-            switch (result)
-            {
-                case MessageBoxResult.Yes:
-                    return true;
-                case MessageBoxResult.No:
-                    return false;
-            }
-
-            return false;
-        }
-        */
-
 
         /*---event handlers & interface modifier------------*/
 
@@ -704,11 +684,23 @@ namespace ProgettoClient
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            //TODO:non scrive
             MyLogger.print("Operazione in corso, attendere chiusura programma...");
-            LogicThreadShutDown();
-            //TODO: attende chiusura thread (?)
-            //logicThread.Join();
+            if (interfaceMode == interfaceMode_t.busy)
+            {
+                string messageBoxText = "Interrompere l'esecuzione del programma e terminarlo?";
+                string caption = "Chiusura programma";
+                MessageBoxButton button = MessageBoxButton.YesNo;
+                MessageBoxImage icon = MessageBoxImage.Warning;
+
+                // Display message box
+                MessageBoxResult wantToClose = MessageBox.Show(messageBoxText, caption, button, icon);
+                if (wantToClose != MessageBoxResult.Yes)
+                {
+                    //annullo la chiusura
+                    e.Cancel = true;
+                }
+            }
+            LogicThreadShutDown(true);
             SaveSettings();
         }
 
@@ -752,10 +744,24 @@ namespace ProgettoClient
             recoverW = new RecoverWindow(this);
             recoverW.Owner = this;
 
+            //sospende autosync
+            suspendAutoSync();
+
             needToAskRecoverInfo = true;
             MakeLogicThreadCycle();
 
             recoverW.ShowDialog();
+        }
+
+        private void suspendAutoSync()
+        {
+            previousAutoSyncState = SyncTimer.IsEnabled;
+            setAutoSync(false);
+        }
+
+        public void resumeAutoSync()
+        {
+            setAutoSync(previousAutoSyncState);
         }
 
         private void setRecoverInfos(RecoverInfos recInfo)
@@ -767,14 +773,10 @@ namespace ProgettoClient
         {
             if (interfaceMode == interfaceMode_t.notLogged)
             {
-                //if (logicThread != null && logicThread.IsAlive)
-                //{
-                //    LogicThreadShutDown();
-                //    logicThread.Join();
-                //}
                 //imposto thread secondario
                 logicThread = new Thread(logicThreadStart);
                 logicThread.Name = "Thread Logico";
+                TerminateLogicThread = false;
                 logicThread.Start();
             }
             else
@@ -840,7 +842,7 @@ namespace ProgettoClient
         {
             MyLogger.debug("LogicThread starting");
             
-            //todo: prox riga solo per debug
+            //setto interfaccia a busy
             this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.busy);
 
             try //catch errori non recuperabili per il thread
@@ -867,9 +869,11 @@ namespace ProgettoClient
 
                 //voglio iniziare con una sync
                 needToSync = true;
+                //needToSync = false;
 
                 //è la prima sync per questa connessione
                 firstConnSync = true;
+                //firstConnSync = false;
 
                 //ciclo finchè la connessione è attiva. si esce solo con eccezione o con chiusura thread logico (anch'essa un'eccezione).
                 while (true)
@@ -978,14 +982,17 @@ namespace ProgettoClient
                 MyLogger.line();
                 MyLogger.debug(e.ToString());
                 MyLogger.debug("LogicThread closing");
+                MyLogger.print("Errore sconosciuto. Chiusura connessione.\n");
             }
 
-            if (!TerminateLogicThread)
-            {
-                //setta la UI in modalità unlocked a meno che non sia TerminateLogicThread settata, 
-                //se no mainThread va in join e va in deadlock (non esegue invoke())
-                this.Dispatcher.Invoke(DelSetInterfaceLoggedMode, interfaceMode_t.notLogged);
-            }
+
+            this.Dispatcher.BeginInvoke(DelSetInterfaceLoggedMode, interfaceMode_t.notLogged);
+            //if (!TerminateLogicThread)
+            //{
+            //    //setta la UI in modalità unlocked a meno che non sia TerminateLogicThread settata, 
+            //    //se no mainThread va in join e va in deadlock (non esegue invoke())
+            //    this.Dispatcher.BeginInvoke(DelSetInterfaceLoggedMode, interfaceMode_t.notLogged);
+            //}
 
             sm.closeConnection();
             //disattivo il timer che sblocca periodicamente il logicThread affinchè controlli se deve abortire
@@ -1011,6 +1018,8 @@ namespace ProgettoClient
                 if (CheckForAbortSignaled)
                 {
                     CheckForAbortSignaled = false;
+ 
+                    //se è da terminare chiudo il thread logico
                     if (TerminateLogicThread)
                         throw new AbortLogicThreadException();
                 }
@@ -1025,6 +1034,7 @@ namespace ProgettoClient
         {
             //TODO:? implementare un meccanismo di abort tra un file e l'altro almeno.
             HashSet<RecordFile> buffer;
+            MyLogger.print("Inizio Sincronizzazione:\n");
             MyLogger.print("Sincronizzazione file aggiornati...");
             buffer = d.getUpdatedFiles();
             foreach (var f in buffer)
